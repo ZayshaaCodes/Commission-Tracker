@@ -84,7 +84,6 @@
 
   // Ensure all state keys exist (for older saved states)
   if (!state.work) state.work = {};
-  delete state.goldPricing;
   // Clean up old sheetsConfig if present
   delete state.sheetsConfig;
 
@@ -496,8 +495,30 @@
       const net = sales - comm;
       const svcCount = calcEmployeeServiceCount(emp.id);
 
+      // Build tooltip with service breakdown
+      const work = getEmployeeWork(emp.id);
+      const tipLines = [];
+      for (const [svcId, qty] of Object.entries(work.inventory)) {
+        if (qty <= 0) continue;
+        const svc = getService(svcId);
+        if (svc) tipLines.push(`${svc.name} x${qty} — ${money(getServicePrice(svcId) * qty)}`);
+      }
+      const svcCounts = {};
+      for (const entry of work.entries) {
+        const svc = getService(entry.serviceId);
+        if (!svc) continue;
+        svcCounts[entry.serviceId] = (svcCounts[entry.serviceId] || { name: svc.name, count: 0, total: 0 });
+        svcCounts[entry.serviceId].count++;
+        svcCounts[entry.serviceId].total += getServicePrice(entry.serviceId);
+      }
+      for (const s of Object.values(svcCounts)) {
+        tipLines.push(`${s.name} x${s.count} — ${money(s.total)}`);
+      }
+      const tooltip = tipLines.length > 0 ? tipLines.join('\n') : 'No services logged';
+
       const tr = document.createElement('tr');
       if (!emp.active) tr.style.opacity = '0.4';
+      tr.dataset.tipHtml = tipLines.map(l => `<div>${esc(l)}</div>`).join('') || '<div class="muted">No services logged</div>';
       const canActivate = !emp.active && isUnlocked();
       tr.innerHTML = `
         <td style="font-weight:600;">${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></td>
@@ -524,6 +545,21 @@
         render();
       }
     };
+
+    // Hover tooltip (follows cursor)
+    const tip = $('dashboardTooltip');
+    tbody.onmouseover = (e) => {
+      const tr = e.target.closest('tr[data-tip-html]');
+      if (!tr) { tip.style.display = 'none'; return; }
+      tip.innerHTML = tr.dataset.tipHtml;
+      tip.style.display = 'block';
+    };
+    tbody.onmousemove = (e) => {
+      if (tip.style.display === 'none') return;
+      tip.style.left = (e.pageX + 12) + 'px';
+      tip.style.top = (e.pageY + 16) + 'px';
+    };
+    tbody.onmouseleave = () => { tip.style.display = 'none'; };
 
     // Activity feed (owner only)
     renderActivityFeed();
@@ -1159,7 +1195,7 @@
   }
 
   // Keys excluded from Firebase sync (local UI state + removed features)
-  const LOCAL_KEYS = new Set(['selectedEmployeeId', 'employeeFilter', 'goldPricing']);
+  const LOCAL_KEYS = new Set(['selectedEmployeeId', 'employeeFilter']);
 
   async function loadFromFirebase() {
     try {
