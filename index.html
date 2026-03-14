@@ -3,10 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#1a1a1a" />
+  <meta name="description" content="SAA Commission Tracker — track employee commissions and services" />
   <title>SAA Commission Tracker</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Loading overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Connecting to database...</div>
+  </div>
+
   <div class="app-header">
     <h1>SAA Commission Tracker</h1>
     <div class="header-controls">
@@ -194,15 +202,16 @@
         </div>
       </div>
 
-      <!-- Passcode -->
+      <!-- Access Control -->
       <div class="panel">
         <div class="panel-header">
           <h2>Access Control</h2>
         </div>
         <div class="sheets-config">
-          <div class="muted">Only people with the passcode can edit data. Viewers can still see the dashboard.</div>
+          <div class="muted">Owners get full access. Employees can log services but can't change settings. Viewers are read-only.</div>
           <div class="control-group" style="gap:8px;margin-top:8px;">
-            <button class="btn" id="changePasscodeBtn">Change Passcode</button>
+            <button class="btn" id="changePasscodeBtn">Change Owner Passcode</button>
+            <button class="btn" id="changeEmpPasscodeBtn">Set Employee Passcode</button>
           </div>
         </div>
       </div>

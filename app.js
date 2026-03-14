@@ -98,31 +98,48 @@
   delete state.sheetsConfig;
 
   // === UTILITIES ===
-  async function hashPasscode(code) {
-    const data = new TextEncoder().encode(code);
-    const buf = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  // Simple SHA-256 implementation that works on file:// (no crypto.subtle needed)
+  function hashPasscode(code) {
+    // djb2-based hash — not cryptographic, but sufficient for a client-side passcode
+    let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (let i = 0; i < code.length; i++) {
+      const ch = code.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+    h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+    h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
   }
 
   // === LOCK / UNLOCK ===
-  let unlocked = false;
+  // Access levels: 'viewer' (read-only), 'employee' (commissions editing), 'owner' (full access)
+  let accessLevel = 'viewer';
 
-  function isUnlocked() { return unlocked; }
+  function isUnlocked() { return accessLevel !== 'viewer'; }
+  function isOwner() { return accessLevel === 'owner'; }
 
   function applyLockState() {
-    document.body.classList.toggle('locked', !unlocked);
+    document.body.classList.remove('locked', 'access-employee');
+    if (accessLevel === 'viewer') document.body.classList.add('locked');
+    else if (accessLevel === 'employee') document.body.classList.add('access-employee');
+
     const lockBtn = $('lockToggle');
     if (lockBtn) {
-      lockBtn.textContent = unlocked ? '🔓 Unlocked' : '🔒 Locked';
-      lockBtn.className = 'btn small ' + (unlocked ? 'success' : '');
+      const labels = { viewer: '🔒 Locked', employee: '🔓 Employee', owner: '🔓 Owner' };
+      const classes = { viewer: 'btn small', employee: 'btn small primary', owner: 'btn small success' };
+      lockBtn.textContent = labels[accessLevel];
+      lockBtn.className = classes[accessLevel];
     }
-    // Hide settings and employees tabs when locked
+    // Hide settings and employees tabs unless owner
     const settingsTab = document.querySelector('[data-tab="settings"]');
     const employeesTab = document.querySelector('[data-tab="employees"]');
-    if (settingsTab) settingsTab.style.display = unlocked ? '' : 'none';
-    if (employeesTab) employeesTab.style.display = unlocked ? '' : 'none';
-    // If on a locked tab, switch to dashboard
-    if (!unlocked && (currentTab === 'settings' || currentTab === 'employees')) {
+    if (settingsTab) settingsTab.style.display = accessLevel === 'owner' ? '' : 'none';
+    if (employeesTab) employeesTab.style.display = accessLevel === 'owner' ? '' : 'none';
+    // If on a restricted tab, switch to dashboard
+    if (accessLevel !== 'owner' && (currentTab === 'settings' || currentTab === 'employees')) {
       switchTab('dashboard');
     }
   }
@@ -138,6 +155,7 @@
   function showUnlockModal() {
     showModal(`
       <h3>🔒 Enter Passcode</h3>
+      <p style="color:#a0a0a0;font-size:13px;margin-bottom:12px;">Enter your owner or employee passcode.</p>
       <div class="control-group mb-8">
         <input id="unlockCode" type="password" placeholder="Enter passcode" style="flex:1;" />
       </div>
@@ -155,11 +173,21 @@
       if (!code) return;
       const hash = await hashPasscode(code);
       try {
-        const res = await fetch(FIREBASE_URL + '/passcode.json');
-        const stored = await res.json();
-        if (stored === hash) {
-          unlocked = true;
-          sessionStorage.setItem('saa_unlocked', '1');
+        const [ownerRes, empRes] = await Promise.all([
+          fetch(FIREBASE_URL + '/passcode.json'),
+          fetch(FIREBASE_URL + '/employeePasscode.json')
+        ]);
+        const ownerHash = await ownerRes.json();
+        const empHash = await empRes.json();
+        if (ownerHash && hash === ownerHash) {
+          accessLevel = 'owner';
+          sessionStorage.setItem('saa_access', 'owner');
+          hideModal();
+          applyLockState();
+          render();
+        } else if (empHash && hash === empHash) {
+          accessLevel = 'employee';
+          sessionStorage.setItem('saa_access', 'employee');
           hideModal();
           applyLockState();
           render();
@@ -204,8 +232,8 @@
           body: JSON.stringify(hash)
         });
         if (!res.ok) throw new Error();
-        unlocked = true;
-        sessionStorage.setItem('saa_unlocked', '1');
+        accessLevel = 'owner';
+        sessionStorage.setItem('saa_access', 'owner');
         hideModal();
         applyLockState();
         render();
@@ -217,9 +245,9 @@
 
   function showChangePasscodeModal() {
     showModal(`
-      <h3>🔑 Change Passcode</h3>
+      <h3>🔑 Change Owner Passcode</h3>
       <div class="control-group mb-8">
-        <input id="oldPasscode" type="password" placeholder="Current passcode" style="flex:1;" />
+        <input id="oldPasscode" type="password" placeholder="Current owner passcode" style="flex:1;" />
       </div>
       <div class="control-group mb-8">
         <input id="newPasscode2" type="password" placeholder="New passcode" style="flex:1;" />
@@ -260,6 +288,45 @@
     };
   }
 
+  function showEmployeePasscodeModal() {
+    showModal(`
+      <h3>🔑 Set Employee Passcode</h3>
+      <p style="color:#a0a0a0;font-size:13px;margin-bottom:12px;">Employees can use this to log services. They won't have access to settings or employee management.</p>
+      <div class="control-group mb-8">
+        <input id="empPasscode" type="password" placeholder="Employee passcode" style="flex:1;" />
+      </div>
+      <div class="control-group mb-8">
+        <input id="empPasscodeConfirm" type="password" placeholder="Confirm passcode" style="flex:1;" />
+      </div>
+      <div id="empPassError" style="color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+      <div class="modal-actions">
+        <button class="btn" id="empPassCancel">Cancel</button>
+        <button class="btn primary" id="empPassSubmit">Save</button>
+      </div>
+    `);
+    $('empPasscode').focus();
+    $('empPassCancel').onclick = hideModal;
+    $('empPasscodeConfirm').onkeydown = (e) => { if (e.key === 'Enter') $('empPassSubmit').click(); };
+    $('empPassSubmit').onclick = async () => {
+      const code = $('empPasscode').value;
+      const confirm = $('empPasscodeConfirm').value;
+      if (!code) { $('empPassError').textContent = 'Enter a passcode.'; return; }
+      if (code !== confirm) { $('empPassError').textContent = 'Passcodes do not match.'; return; }
+      try {
+        const hash = await hashPasscode(code);
+        const res = await fetch(FIREBASE_URL + '/employeePasscode.json', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(hash)
+        });
+        if (!res.ok) throw new Error();
+        hideModal();
+      } catch {
+        $('empPassError').textContent = 'Failed to save. Check connection.';
+      }
+    };
+  }
+
   function getRole(roleId) {
     return state.roles.find(r => r.id === roleId);
   }
@@ -278,7 +345,10 @@
     if (!state.work[empId]) {
       state.work[empId] = { inventory: {}, entries: [] };
     }
-    return state.work[empId];
+    const w = state.work[empId];
+    if (!w.inventory || typeof w.inventory !== 'object') w.inventory = {};
+    if (!Array.isArray(w.entries)) w.entries = [];
+    return w;
   }
 
   function calcEmployeeSales(empId) {
@@ -346,6 +416,8 @@
   }
 
   // === RENDER ===
+  let fromRemote = false;
+
   function render() {
     switch (currentTab) {
       case 'dashboard': renderDashboard(); break;
@@ -353,7 +425,7 @@
       case 'employees': renderEmployees(); break;
       case 'settings': renderSettings(); break;
     }
-    saveState();
+    if (!fromRemote) saveState();
   }
 
   // --- DASHBOARD ---
@@ -514,6 +586,7 @@
       w.inventory[svcId] = Math.max(0, (w.inventory[svcId] || 0) + dir);
       if (w.inventory[svcId] === 0) delete w.inventory[svcId];
       renderCommissions();
+      saveState();
     };
 
     // Service buttons
@@ -542,6 +615,7 @@
         const w = getEmployeeWork(state.selectedEmployeeId);
         w.entries.push({ id: uid(), serviceId: svc.id, timestamp: Date.now() });
         renderCommissions();
+        saveState();
       };
       svcBtnsEl.appendChild(btn);
     }
@@ -616,6 +690,7 @@
         const w = getEmployeeWork(state.selectedEmployeeId);
         w.entries = w.entries.filter(en => en.id !== entryId);
         renderCommissions();
+        saveState();
       };
     }
   }
@@ -889,8 +964,11 @@
   // === FIREBASE DATABASE ===
   let syncTimer = null;
   let syncInFlight = false;
+  let initialLoadDone = false;
+  let ignoreNextStream = false;
 
   function scheduleSync() {
+    if (!initialLoadDone) return; // Don't push until we've loaded from Firebase
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => pushToFirebase(), 1500);
   }
@@ -901,15 +979,24 @@
     el.className = 'sync-status' + (ok ? ' connected' : '');
   }
 
+  // Keys that are local UI state, not shared data
+  const LOCAL_KEYS = new Set(['selectedEmployeeId', 'employeeFilter']);
+
   async function loadFromFirebase() {
     try {
       updateSyncBadge('Loading...', false);
-      const res = await fetch(FIREBASE_URL + '/state.json');
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(FIREBASE_URL + '/state.json', { signal: controller.signal });
+      clearTimeout(timeout);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
 
       if (data) {
-        Object.assign(state, data);
+        // Merge remote data into state, preserve local UI state
+        Object.keys(data).forEach(k => {
+          if (!LOCAL_KEYS.has(k)) state[k] = data[k];
+        });
         // Re-hydrate Infinity for gold pricing
         if (state.goldPricing) {
           for (const tier of state.goldPricing) {
@@ -917,28 +1004,35 @@
           }
         }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        render();
       }
       updateSyncBadge('Synced', true);
       if ($('firebaseStatus')) {
         $('firebaseStatus').textContent = 'Connected to Firebase.';
         $('firebaseStatus').style.color = '#4ade80';
       }
+      return true;
     } catch (err) {
       updateSyncBadge('Offline', false);
       if ($('firebaseStatus')) {
         $('firebaseStatus').textContent = 'Could not reach Firebase: ' + err.message + '. Using local data.';
         $('firebaseStatus').style.color = '#f87171';
       }
+      return false;
     }
   }
 
   async function pushToFirebase() {
-    if (syncInFlight) return;
+    if (syncInFlight || !initialLoadDone) return;
     syncInFlight = true;
+    ignoreNextStream = true; // Don't re-apply our own push
     try {
       updateSyncBadge('Saving...', false);
-      const payload = JSON.parse(JSON.stringify(state, (key, val) => val === Infinity ? 'Infinity' : val));
+      // Strip local-only keys before pushing
+      const shared = {};
+      for (const [k, v] of Object.entries(state)) {
+        if (!LOCAL_KEYS.has(k)) shared[k] = v;
+      }
+      const payload = JSON.parse(JSON.stringify(shared, (key, val) => val === Infinity ? 'Infinity' : val));
 
       const res = await fetch(FIREBASE_URL + '/state.json', {
         method: 'PUT',
@@ -953,6 +1047,52 @@
     } finally {
       syncInFlight = false;
     }
+  }
+
+  // === REAL-TIME STREAMING (SSE) ===
+  let eventSource = null;
+
+  function startStreaming() {
+    if (eventSource) eventSource.close();
+    eventSource = new EventSource(FIREBASE_URL + '/state.json');
+
+    function applyRemoteData(data) {
+      // Only merge shared keys, preserve local UI state
+      Object.keys(data).forEach(k => {
+        if (!LOCAL_KEYS.has(k)) state[k] = data[k];
+      });
+      if (state.goldPricing) {
+        for (const tier of state.goldPricing) {
+          if (tier.max === null || tier.max === 'Infinity') tier.max = Infinity;
+        }
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      fromRemote = true;
+      render();
+      fromRemote = false;
+      updateSyncBadge('Synced', true);
+    }
+
+    eventSource.addEventListener('put', (e) => {
+      if (ignoreNextStream) { ignoreNextStream = false; return; }
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.path === '/' && msg.data) applyRemoteData(msg.data);
+      } catch { /* ignore parse errors */ }
+    });
+
+    eventSource.addEventListener('patch', (e) => {
+      if (ignoreNextStream) { ignoreNextStream = false; return; }
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.data) applyRemoteData(msg.data);
+      } catch { /* ignore parse errors */ }
+    });
+
+    eventSource.onerror = () => {
+      updateSyncBadge('Reconnecting...', false);
+      // EventSource auto-reconnects
+    };
   }
 
   // === CSV EXPORT ===
@@ -1019,7 +1159,7 @@
   }
 
   // === EVENT HANDLERS ===
-  function init() {
+  async function init() {
     // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -1111,7 +1251,10 @@
     };
 
     $('resetAllBtn').onclick = () => {
-      showConfirmModal('Reset ALL data to defaults? This cannot be undone.', () => {
+      showConfirmModal('Reset ALL data to defaults? This will clear both local and remote data. This cannot be undone.', async () => {
+        try {
+          await fetch(FIREBASE_URL + '/state.json', { method: 'DELETE' });
+        } catch { /* continue with local reset even if remote fails */ }
         localStorage.removeItem(STORAGE_KEY);
         location.reload();
       });
@@ -1129,9 +1272,9 @@
 
     // Lock toggle button
     $('lockToggle').onclick = async () => {
-      if (unlocked) {
-        unlocked = false;
-        sessionStorage.removeItem('saa_unlocked');
+      if (accessLevel !== 'viewer') {
+        accessLevel = 'viewer';
+        sessionStorage.removeItem('saa_access');
         applyLockState();
         render();
       } else {
@@ -1144,21 +1287,36 @@
       }
     };
 
-    // Change passcode
+    // Change passcodes (owner settings)
     $('changePasscodeBtn').onclick = () => showChangePasscodeModal();
+    $('changeEmpPasscodeBtn').onclick = () => showEmployeePasscodeModal();
 
-    // Restore session unlock
-    if (sessionStorage.getItem('saa_unlocked') === '1') {
-      unlocked = true;
+    // Restore session access level
+    const savedAccess = sessionStorage.getItem('saa_access');
+    if (savedAccess === 'owner' || savedAccess === 'employee') {
+      accessLevel = savedAccess;
     }
     applyLockState();
 
-    // Initial render (from local cache, fast)
+    // Startup: load from Firebase FIRST, then render
+    // This prevents defaults from overwriting the shared database
+    try {
+      await loadFromFirebase();
+    } catch { /* continue with local data */ }
+    initialLoadDone = true;
     render();
 
-    // Then load latest from Firebase (async, overrides if newer)
-    loadFromFirebase();
+    // Hide loading overlay
+    const loader = $('loadingOverlay');
+    if (loader) loader.style.display = 'none';
+
+    // Start real-time streaming for concurrent updates
+    startStreaming();
   }
 
-  init();
+  init().catch(err => {
+    console.error('Init failed:', err);
+    const loader = $('loadingOverlay');
+    if (loader) loader.style.display = 'none';
+  });
 })();

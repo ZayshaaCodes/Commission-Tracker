@@ -236,6 +236,7 @@ th {
 }
 
 /* ===================== LOCK / READ-ONLY ===================== */
+/* Viewer: hide ALL edit controls */
 body.locked .counter-btn,
 body.locked .service-btn,
 body.locked .log-delete,
@@ -249,6 +250,11 @@ body.locked .event-toggle {
 
 body.locked .counter-controls {
   pointer-events: none;
+}
+
+/* Employee: hide management controls only */
+body.access-employee .event-toggle {
+  display: none !important;
 }
 
 /* ===================== DASHBOARD ===================== */
@@ -869,3 +875,34 @@ body.locked .counter-controls {
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
 .mb-8 { margin-bottom: 8px; }
 .mt-8 { margin-top: 8px; }
+
+/* ===================== LOADING OVERLAY ===================== */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #333;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: #888;
+  font-size: 14px;
+}
