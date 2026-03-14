@@ -51,14 +51,6 @@
     { id: uid(), name: 'Brett Wescott', stateId: '5141', roleId: 'master_tech', active: true }
   ];
 
-  const DEFAULT_GOLD_PRICING = [
-    { min: 1, max: 5, price: 200 },
-    { min: 6, max: 12, price: 300 },
-    { min: 12, max: 19, price: 500 },
-    { min: 20, max: 25, price: 750 },
-    { min: 26, max: Infinity, price: 1000 }
-  ];
-
   // === PERSISTENCE ===
   const STORAGE_KEY = 'saa_commission_tracker';
   // Firebase Realtime Database URL
@@ -85,7 +77,6 @@
     employees: DEFAULT_EMPLOYEES,
     // Per-employee work data: { [employeeId]: { inventory: {serviceId: qty}, entries: [{id, serviceId, timestamp}] } }
     work: {},
-    goldPricing: structuredClone(DEFAULT_GOLD_PRICING),
     eventMode: false,
     selectedEmployeeId: null,
     employeeFilter: 'active'
@@ -93,7 +84,7 @@
 
   // Ensure all state keys exist (for older saved states)
   if (!state.work) state.work = {};
-  if (!state.goldPricing) state.goldPricing = structuredClone(DEFAULT_GOLD_PRICING);
+  delete state.goldPricing;
   // Clean up old sheetsConfig if present
   delete state.sheetsConfig;
 
@@ -468,7 +459,25 @@
         <div class="metric-value">${activeEmps.length}</div>
         <div class="metric-accent" style="background:#a78bfa;"></div>
       </div>
+      <div class="metric-card">
+        <div class="metric-label">Gov Internals</div>
+        <div class="metric-value">${govTotal}</div>
+        <div class="metric-accent" style="background:#f97316;"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">HG Gov Internals</div>
+        <div class="metric-value">${hgGovTotal}</div>
+        <div class="metric-accent" style="background:#ec4899;"></div>
+      </div>
     `;
+
+    // Charts (owner only)
+    const chartsRow = document.querySelector('.dashboard-charts-row');
+    if (chartsRow) chartsRow.style.display = isOwner() ? '' : 'none';
+    if (isOwner()) {
+      renderTimeline();
+      renderSalesChart(activeEmps);
+    }
 
     // Employee table
     const tbody = $('dashboardBody');
@@ -489,32 +498,212 @@
 
       const tr = document.createElement('tr');
       if (!emp.active) tr.style.opacity = '0.4';
+      const canActivate = !emp.active && isUnlocked();
       tr.innerHTML = `
-        <td style="font-weight:600;">${esc(emp.name)}</td>
+        <td style="font-weight:600;">${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></td>
         <td><span class="role-badge" style="background:${role ? role.color : '#666'}22;color:${role ? role.color : '#888'};border-color:${role ? role.color : '#666'};">${esc(role ? role.name : 'Unknown')}</span></td>
-        <td class="muted">${esc(emp.stateId)}</td>
         <td>${svcCount}</td>
         <td class="text-green">${money(sales)}</td>
-        <td>${role ? role.commission + '%' : '-'}</td>
         <td class="text-amber">${money(comm)}</td>
         <td class="text-blue">${money(net)}</td>
-        <td><span class="badge ${emp.active ? 'active' : 'inactive'}">${emp.active ? 'Active' : 'Inactive'}</span></td>
+        <td>${canActivate
+          ? `<button class="btn small success activate-btn" data-activate="${emp.id}">Activate</button>`
+          : `<span class="badge ${emp.active ? 'active' : 'inactive'}">${emp.active ? 'Active' : 'Inactive'}</span>`
+        }</td>
       `;
       tbody.appendChild(tr);
     }
 
-    // Transaction totals
-    $('transactionTotals').innerHTML = `
-      <div class="stat-row"><span class="stat-label">Sales</span><span class="stat-value text-green">${money(totalSales)}</span></div>
-      <div class="stat-row"><span class="stat-label">Commissions</span><span class="stat-value text-amber">${money(totalCommissions)}</span></div>
-      <div class="stat-row"><span class="stat-label">Net Revenue</span><span class="stat-value text-blue">${money(netRevenue)}</span></div>
-    `;
+    // Activate button handler
+    tbody.onclick = (e) => {
+      const btn = e.target.closest('[data-activate]');
+      if (!btn) return;
+      const emp = state.employees.find(em => em.id === btn.dataset.activate);
+      if (emp) {
+        emp.active = true;
+        render();
+      }
+    };
 
-    // Gov totals
-    $('govTotals').innerHTML = `
-      <div class="stat-row"><span class="stat-label">Gov Total</span><span class="stat-value">${govTotal}</span></div>
-      <div class="stat-row"><span class="stat-label">HG Gov Total</span><span class="stat-value">${hgGovTotal}</span></div>
-    `;
+    // Activity feed (owner only)
+    renderActivityFeed();
+  }
+
+  // --- ACTIVITY FEED (owner only) ---
+  function renderActivityFeed() {
+    const panel = $('activityFeedPanel');
+    const el = $('activityFeed');
+    if (!panel || !el) return;
+
+    if (!isOwner()) {
+      panel.style.display = 'none';
+      return;
+    }
+    panel.style.display = '';
+
+    // Collect all entries across employees
+    const items = [];
+    for (const emp of state.employees) {
+      const work = getEmployeeWork(emp.id);
+      const role = getRole(emp.roleId);
+      for (const entry of work.entries) {
+        const svc = getService(entry.serviceId);
+        if (!svc) continue;
+        items.push({
+          timestamp: entry.timestamp,
+          empName: emp.name,
+          empColor: role ? role.color : '#666',
+          svcName: svc.name,
+          price: getServicePrice(entry.serviceId)
+        });
+      }
+      // Inventory changes (no timestamps, show as aggregate)
+      for (const [svcId, qty] of Object.entries(work.inventory)) {
+        if (qty <= 0) continue;
+        const svc = getService(svcId);
+        if (!svc) continue;
+        items.push({
+          timestamp: 0,
+          empName: emp.name,
+          empColor: role ? role.color : '#666',
+          svcName: svc.name + ' x' + qty,
+          price: getServicePrice(svcId) * qty,
+          isInventory: true
+        });
+      }
+    }
+
+    // Sort newest first, inventory items at end
+    items.sort((a, b) => b.timestamp - a.timestamp);
+
+    if (items.length === 0) {
+      el.innerHTML = '<div class="chart-empty">No activity yet</div>';
+      return;
+    }
+
+    // Show up to 30 most recent
+    const shown = items.slice(0, 30);
+    let html = '';
+    for (const item of shown) {
+      const timeStr = item.timestamp
+        ? new Date(item.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+        : 'Inventory';
+      html += `<div class="af-item">
+        <span class="af-dot" style="background:${item.empColor}"></span>
+        <span class="af-name">${esc(item.empName)}</span>
+        <span class="af-action">${esc(item.svcName)}</span>
+        <span class="af-price text-green">${money(item.price)}</span>
+        <span class="af-time">${timeStr}</span>
+      </div>`;
+    }
+    if (items.length > 30) {
+      html += `<div class="af-more">+ ${items.length - 30} more entries</div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  // --- ACTIVITY TIMELINE ---
+  function renderTimeline() {
+    const el = $('activityTimeline');
+    if (!el) return;
+
+    // Collect all service entries with timestamps
+    const allEntries = [];
+    for (const emp of state.employees) {
+      if (!emp.active) continue;
+      const work = getEmployeeWork(emp.id);
+      const role = getRole(emp.roleId);
+      const color = role ? role.color : '#666';
+      for (const entry of work.entries) {
+        allEntries.push({ timestamp: entry.timestamp, serviceId: entry.serviceId, color });
+      }
+    }
+
+    if (allEntries.length === 0) {
+      el.innerHTML = '<div class="chart-empty">No activity recorded yet</div>';
+      return;
+    }
+
+    // Group by day (last 7 days)
+    const now = new Date();
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      days.push({
+        start: d.getTime(),
+        end: d.getTime() + 86400000,
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        dateStr: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        revenue: 0,
+        count: 0,
+        isToday: i === 0
+      });
+    }
+
+    for (const entry of allEntries) {
+      for (const day of days) {
+        if (entry.timestamp >= day.start && entry.timestamp < day.end) {
+          day.revenue += getServicePrice(entry.serviceId);
+          day.count++;
+        }
+      }
+    }
+
+    const maxRevenue = Math.max(...days.map(d => d.revenue), 1);
+
+    let html = '<div class="timeline-chart">';
+    for (const day of days) {
+      const pct = Math.max((day.revenue / maxRevenue) * 100, 2);
+      const active = day.revenue > 0;
+      html += `
+        <div class="tl-col">
+          <div class="tl-bar-wrap">
+            <div class="tl-bar${active ? ' active' : ''}${day.isToday ? ' today' : ''}" style="height:${pct.toFixed(1)}%;">
+              <div class="tl-tooltip">${day.dateStr}<br>${money(day.revenue)} &middot; ${day.count} svc</div>
+            </div>
+          </div>
+          <span class="tl-label${day.isToday ? ' today' : ''}">${day.label}</span>
+        </div>`;
+    }
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  // --- SALES BY EMPLOYEE CHART ---
+  function renderSalesChart(activeEmps) {
+    const el = $('salesChart');
+    if (!el) return;
+
+    const empSales = activeEmps
+      .map(emp => ({
+        name: emp.name,
+        sales: calcEmployeeSales(emp.id),
+        color: (getRole(emp.roleId) || {}).color || '#666'
+      }))
+      .sort((a, b) => b.sales - a.sales);
+
+    if (empSales.length === 0 || empSales.every(e => e.sales === 0)) {
+      el.innerHTML = '<div class="chart-empty">No sales data yet</div>';
+      return;
+    }
+
+    const maxSales = Math.max(...empSales.map(e => e.sales), 1);
+
+    let html = '';
+    for (const e of empSales) {
+      const pct = (e.sales / maxSales * 100).toFixed(1);
+      html += `
+        <div class="sb-row">
+          <span class="sb-name">${esc(e.name)}</span>
+          <div class="sb-track">
+            <div class="sb-fill" style="width:${pct}%;background:${e.color};"></div>
+          </div>
+          <span class="sb-amount">${money(e.sales)}</span>
+        </div>`;
+    }
+    el.innerHTML = html;
   }
 
   // --- COMMISSIONS ---
@@ -530,7 +719,7 @@
       pill.className = 'emp-pill' + (state.selectedEmployeeId === emp.id ? ' selected' : '');
       pill.innerHTML = `
         <span class="emp-pill-dot" style="background:${role ? role.color : '#666'};"></span>
-        ${esc(emp.name)}
+        ${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span>
         <span class="emp-pill-sales">${money(sales)}</span>
       `;
       pill.onclick = () => {
@@ -626,11 +815,23 @@
     const net = sales - commAmt;
     const commRate = role ? role.commission : 0;
 
-    $('employeeSummary').innerHTML = `
-      <div class="summary-card"><div class="sc-label">Gross Sales</div><div class="sc-value text-green">${money(sales)}</div></div>
-      <div class="summary-card"><div class="sc-label">Commission Rate</div><div class="sc-value text-amber">${commRate}%</div></div>
-      <div class="summary-card"><div class="sc-label">Commission</div><div class="sc-value text-amber">${money(commAmt)}</div></div>
-      <div class="summary-card"><div class="sc-label">Net Sales</div><div class="sc-value text-blue">${money(net)}</div></div>
+    $('compactSummary').innerHTML = `
+      <div class="compact-stat">
+        <span class="cs-label">Gross</span>
+        <span class="cs-value text-green">${money(sales)}</span>
+      </div>
+      <div class="compact-stat">
+        <span class="cs-label">Rate</span>
+        <span class="cs-value text-amber">${commRate}%</span>
+      </div>
+      <div class="compact-stat">
+        <span class="cs-label">Commission</span>
+        <span class="cs-value text-amber">${money(commAmt)}</span>
+      </div>
+      <div class="compact-stat">
+        <span class="cs-label">Net</span>
+        <span class="cs-value text-blue">${money(net)}</span>
+      </div>
     `;
 
     // Service log
@@ -725,39 +926,31 @@
       const role = getRole(emp.roleId);
       const sales = calcEmployeeSales(emp.id);
       const comm = calcEmployeeCommission(emp.id);
-      const net = sales - comm;
+      const svcCount = calcEmployeeServiceCount(emp.id);
 
-      const card = document.createElement('div');
-      card.className = 'employee-card' + (emp.active ? '' : ' inactive');
-      card.style.borderLeftColor = role ? role.color : '#666';
-      card.innerHTML = `
-        <div class="ec-header">
-          <div>
-            <div class="ec-name">${esc(emp.name)}</div>
-            <div class="ec-state-id">ID: ${esc(emp.stateId)}</div>
-          </div>
+      const row = document.createElement('div');
+      row.className = 'emp-row' + (emp.active ? '' : ' inactive');
+      row.style.borderLeftColor = role ? role.color : '#666';
+      row.innerHTML = `
+        <div class="emp-row-left">
           <label class="toggle-switch" title="${emp.active ? 'Deactivate' : 'Activate'}">
             <input type="checkbox" ${emp.active ? 'checked' : ''} data-emp-toggle="${emp.id}" />
             <span class="toggle-slider"></span>
           </label>
+          <span class="emp-row-name">${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></span>
+          <span class="role-badge" style="background:${role ? role.color : '#666'}22;color:${role ? role.color : '#888'};border-color:${role ? role.color : '#666'};">${esc(role ? role.name : 'Unknown')}</span>
         </div>
-        <div class="ec-role">
-          <span class="role-badge" style="background:${role ? role.color : '#666'}22;color:${role ? role.color : '#888'};border-color:${role ? role.color : '#666'};">
-            ${esc(role ? role.name : 'Unknown')}${role ? ` (${role.commission}%)` : ''}
-          </span>
+        <div class="emp-row-stats">
+          <span class="emp-row-stat"><span class="text-green">${money(sales)}</span></span>
+          <span class="emp-row-stat"><span class="text-amber">${money(comm)}</span></span>
+          <span class="emp-row-stat">${svcCount} svc</span>
         </div>
-        <div class="ec-stats">
-          <div><div class="ec-stat-label">Gross Sales</div><div class="ec-stat-value text-green">${money(sales)}</div></div>
-          <div><div class="ec-stat-label">Commission</div><div class="ec-stat-value text-amber">${money(comm)}</div></div>
-          <div><div class="ec-stat-label">Net Sales</div><div class="ec-stat-value text-blue">${money(net)}</div></div>
-          <div><div class="ec-stat-label">Services</div><div class="ec-stat-value">${calcEmployeeServiceCount(emp.id)}</div></div>
-        </div>
-        <div class="ec-actions">
+        <div class="emp-row-actions ec-actions">
           <button class="btn small" data-emp-edit="${emp.id}">Edit</button>
           <button class="btn small danger" data-emp-delete="${emp.id}">Remove</button>
         </div>
       `;
-      grid.appendChild(card);
+      grid.appendChild(row);
     }
 
     // Event delegation for cards
@@ -873,20 +1066,6 @@
         render();
       }
     };
-
-    // Gold pricing
-    const goldEl = $('goldPricingEditor');
-    goldEl.innerHTML = '';
-    for (const tier of state.goldPricing) {
-      const div = document.createElement('div');
-      div.className = 'gold-row';
-      const rangeText = tier.max === Infinity ? `${tier.min}+` : `${tier.min} - ${tier.max}`;
-      div.innerHTML = `
-        <span class="gold-range">${rangeText}</span>
-        <span class="gold-price">${money(tier.price)} per</span>
-      `;
-      goldEl.appendChild(div);
-    }
   }
 
   // === HTML ESCAPING ===
@@ -979,8 +1158,8 @@
     el.className = 'sync-status' + (ok ? ' connected' : '');
   }
 
-  // Keys that are local UI state, not shared data
-  const LOCAL_KEYS = new Set(['selectedEmployeeId', 'employeeFilter']);
+  // Keys excluded from Firebase sync (local UI state + removed features)
+  const LOCAL_KEYS = new Set(['selectedEmployeeId', 'employeeFilter', 'goldPricing']);
 
   async function loadFromFirebase() {
     try {
@@ -997,12 +1176,6 @@
         Object.keys(data).forEach(k => {
           if (!LOCAL_KEYS.has(k)) state[k] = data[k];
         });
-        // Re-hydrate Infinity for gold pricing
-        if (state.goldPricing) {
-          for (const tier of state.goldPricing) {
-            if (tier.max === null || tier.max === 'Infinity') tier.max = Infinity;
-          }
-        }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       }
       updateSyncBadge('Synced', true);
@@ -1061,11 +1234,6 @@
       Object.keys(data).forEach(k => {
         if (!LOCAL_KEYS.has(k)) state[k] = data[k];
       });
-      if (state.goldPricing) {
-        for (const tier of state.goldPricing) {
-          if (tier.max === null || tier.max === 'Infinity') tier.max = Infinity;
-        }
-      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       fromRemote = true;
       render();

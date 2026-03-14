@@ -37,7 +37,19 @@
   <!-- ===================== DASHBOARD ===================== -->
   <div id="dashboardTab" class="tab-content active">
     <div class="metrics-row" id="metricsRow"></div>
-    <div class="panel">
+
+    <div class="dashboard-charts-row">
+      <div class="panel">
+        <div class="panel-header"><h2>Activity Timeline</h2></div>
+        <div id="activityTimeline"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h2>Sales by Employee</h2></div>
+        <div id="salesChart"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:12px;">
       <div class="panel-header">
         <h2>Employee Summary</h2>
         <div class="panel-actions">
@@ -50,11 +62,9 @@
             <tr>
               <th>Employee</th>
               <th>Role</th>
-              <th>State ID</th>
               <th>Services</th>
               <th>Gross Sales</th>
-              <th>Commission %</th>
-              <th>Commission $</th>
+              <th>Commission</th>
               <th>Net Sales</th>
               <th>Status</th>
             </tr>
@@ -64,25 +74,18 @@
       </div>
     </div>
 
-    <div class="dashboard-bottom-row">
-      <div class="panel">
-        <div class="panel-header"><h2>Transaction Totals</h2></div>
-        <div id="transactionTotals"></div>
-      </div>
-      <div class="panel">
-        <div class="panel-header"><h2>Gov Totals</h2></div>
-        <div id="govTotals"></div>
-      </div>
+    <div id="activityFeedPanel" class="panel owner-only" style="margin-top:12px;display:none;">
+      <div class="panel-header"><h2>Activity Feed</h2></div>
+      <div id="activityFeed" class="activity-feed"></div>
     </div>
   </div>
-
-  <!-- ===================== COMMISSIONS ===================== -->
   <div id="commissionsTab" class="tab-content">
     <div class="employee-picker" id="employeePicker"></div>
 
-    <div id="commissionWorkArea" class="commission-grid" style="display:none;">
-      <!-- Left: Work Entry -->
-      <div class="panel work-panel">
+    <div id="commissionWorkArea" style="display:none;">
+      <div id="compactSummary" class="compact-summary"></div>
+
+      <div class="panel">
         <div class="panel-header">
           <h2 id="workEmployeeName">Select Employee</h2>
           <div class="panel-actions">
@@ -101,14 +104,8 @@
         </div>
       </div>
 
-      <!-- Right: Summary + Log -->
-      <div class="panel summary-panel">
-        <div class="panel-header">
-          <h2>Summary</h2>
-        </div>
-        <div id="employeeSummary" class="summary-cards"></div>
-
-        <h3 style="margin-top:16px;">Service Log</h3>
+      <div class="panel" style="margin-top:12px;">
+        <div class="panel-header"><h2>Service Log</h2></div>
         <div id="serviceLog" class="service-log"></div>
       </div>
     </div>
@@ -178,14 +175,6 @@
             <tbody id="servicesEditor"></tbody>
           </table>
         </div>
-      </div>
-
-      <!-- Gold Pricing -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2>Gold Price (Per Bar Bulk)</h2>
-        </div>
-        <div id="goldPricingEditor"></div>
       </div>
 
       <!-- Firebase Sync Status -->
