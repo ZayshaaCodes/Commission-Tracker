@@ -1235,12 +1235,6 @@
       });
     };
 
-    $('firebaseResetRemote').onclick = () => {
-      showConfirmModal('Reset Firebase data to current local data?', () => {
-        pushToFirebase();
-      });
-    };
-
     // Data management
     $('exportCsvBtn').onclick = exportCsv;
     $('exportJsonBtn').onclick = exportJson;
