@@ -61,6 +61,8 @@
 
   // === PERSISTENCE ===
   const STORAGE_KEY = 'saa_commission_tracker';
+  // Firebase Realtime Database URL
+  const FIREBASE_URL = 'https://dreamworks-commission-default-rtdb.firebaseio.com';
 
   function loadState() {
     try {
@@ -72,6 +74,7 @@
 
   function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    scheduleSync();
   }
 
   // === STATE ===
@@ -84,7 +87,6 @@
     work: {},
     goldPricing: structuredClone(DEFAULT_GOLD_PRICING),
     eventMode: false,
-    sheetsConfig: { apiKey: '', spreadsheetId: '', sheetName: 'Sheet1', enabled: false },
     selectedEmployeeId: null,
     employeeFilter: 'active'
   };
@@ -92,9 +94,172 @@
   // Ensure all state keys exist (for older saved states)
   if (!state.work) state.work = {};
   if (!state.goldPricing) state.goldPricing = structuredClone(DEFAULT_GOLD_PRICING);
-  if (!state.sheetsConfig) state.sheetsConfig = { apiKey: '', spreadsheetId: '', sheetName: 'Sheet1', enabled: false };
+  // Clean up old sheetsConfig if present
+  delete state.sheetsConfig;
 
   // === UTILITIES ===
+  async function hashPasscode(code) {
+    const data = new TextEncoder().encode(code);
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // === LOCK / UNLOCK ===
+  let unlocked = false;
+
+  function isUnlocked() { return unlocked; }
+
+  function applyLockState() {
+    document.body.classList.toggle('locked', !unlocked);
+    const lockBtn = $('lockToggle');
+    if (lockBtn) {
+      lockBtn.textContent = unlocked ? '🔓 Unlocked' : '🔒 Locked';
+      lockBtn.className = 'btn small ' + (unlocked ? 'success' : '');
+    }
+    // Hide settings and employees tabs when locked
+    const settingsTab = document.querySelector('[data-tab="settings"]');
+    const employeesTab = document.querySelector('[data-tab="employees"]');
+    if (settingsTab) settingsTab.style.display = unlocked ? '' : 'none';
+    if (employeesTab) employeesTab.style.display = unlocked ? '' : 'none';
+    // If on a locked tab, switch to dashboard
+    if (!unlocked && (currentTab === 'settings' || currentTab === 'employees')) {
+      switchTab('dashboard');
+    }
+  }
+
+  async function checkPasscodeExists() {
+    try {
+      const res = await fetch(FIREBASE_URL + '/passcode.json');
+      const data = await res.json();
+      return !!data;
+    } catch { return false; }
+  }
+
+  function showUnlockModal() {
+    showModal(`
+      <h3>🔒 Enter Passcode</h3>
+      <div class="control-group mb-8">
+        <input id="unlockCode" type="password" placeholder="Enter passcode" style="flex:1;" />
+      </div>
+      <div id="unlockError" style="color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+      <div class="modal-actions">
+        <button class="btn" id="unlockCancel">Cancel</button>
+        <button class="btn primary" id="unlockSubmit">Unlock</button>
+      </div>
+    `);
+    $('unlockCode').focus();
+    $('unlockCancel').onclick = hideModal;
+    $('unlockCode').onkeydown = (e) => { if (e.key === 'Enter') $('unlockSubmit').click(); };
+    $('unlockSubmit').onclick = async () => {
+      const code = $('unlockCode').value;
+      if (!code) return;
+      const hash = await hashPasscode(code);
+      try {
+        const res = await fetch(FIREBASE_URL + '/passcode.json');
+        const stored = await res.json();
+        if (stored === hash) {
+          unlocked = true;
+          sessionStorage.setItem('saa_unlocked', '1');
+          hideModal();
+          applyLockState();
+          render();
+        } else {
+          $('unlockError').textContent = 'Incorrect passcode.';
+        }
+      } catch {
+        $('unlockError').textContent = 'Could not verify. Check connection.';
+      }
+    };
+  }
+
+  function showSetPasscodeModal() {
+    showModal(`
+      <h3>🔑 Set Owner Passcode</h3>
+      <p style="color:#a0a0a0;font-size:13px;margin-bottom:12px;">No passcode set yet. Create one to protect editing access.</p>
+      <div class="control-group mb-8">
+        <input id="newPasscode" type="password" placeholder="New passcode" style="flex:1;" />
+      </div>
+      <div class="control-group mb-8">
+        <input id="confirmPasscode" type="password" placeholder="Confirm passcode" style="flex:1;" />
+      </div>
+      <div id="setPassError" style="color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+      <div class="modal-actions">
+        <button class="btn" id="setPassCancel">Cancel</button>
+        <button class="btn primary" id="setPassSubmit">Set Passcode</button>
+      </div>
+    `);
+    $('newPasscode').focus();
+    $('setPassCancel').onclick = hideModal;
+    $('confirmPasscode').onkeydown = (e) => { if (e.key === 'Enter') $('setPassSubmit').click(); };
+    $('setPassSubmit').onclick = async () => {
+      const code = $('newPasscode').value;
+      const confirm = $('confirmPasscode').value;
+      if (!code) { $('setPassError').textContent = 'Enter a passcode.'; return; }
+      if (code !== confirm) { $('setPassError').textContent = 'Passcodes do not match.'; return; }
+      try {
+        const hash = await hashPasscode(code);
+        const res = await fetch(FIREBASE_URL + '/passcode.json', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(hash)
+        });
+        if (!res.ok) throw new Error();
+        unlocked = true;
+        sessionStorage.setItem('saa_unlocked', '1');
+        hideModal();
+        applyLockState();
+        render();
+      } catch {
+        $('setPassError').textContent = 'Failed to save. Check connection.';
+      }
+    };
+  }
+
+  function showChangePasscodeModal() {
+    showModal(`
+      <h3>🔑 Change Passcode</h3>
+      <div class="control-group mb-8">
+        <input id="oldPasscode" type="password" placeholder="Current passcode" style="flex:1;" />
+      </div>
+      <div class="control-group mb-8">
+        <input id="newPasscode2" type="password" placeholder="New passcode" style="flex:1;" />
+      </div>
+      <div class="control-group mb-8">
+        <input id="confirmPasscode2" type="password" placeholder="Confirm new passcode" style="flex:1;" />
+      </div>
+      <div id="changePassError" style="color:#f87171;font-size:13px;margin-bottom:8px;"></div>
+      <div class="modal-actions">
+        <button class="btn" id="changePassCancel">Cancel</button>
+        <button class="btn primary" id="changePassSubmit">Change</button>
+      </div>
+    `);
+    $('oldPasscode').focus();
+    $('changePassCancel').onclick = hideModal;
+    $('confirmPasscode2').onkeydown = (e) => { if (e.key === 'Enter') $('changePassSubmit').click(); };
+    $('changePassSubmit').onclick = async () => {
+      const old = $('oldPasscode').value;
+      const code = $('newPasscode2').value;
+      const confirm = $('confirmPasscode2').value;
+      if (!old || !code) { $('changePassError').textContent = 'Fill in all fields.'; return; }
+      if (code !== confirm) { $('changePassError').textContent = 'New passcodes do not match.'; return; }
+      try {
+        const oldHash = await hashPasscode(old);
+        const res = await fetch(FIREBASE_URL + '/passcode.json');
+        const stored = await res.json();
+        if (stored !== oldHash) { $('changePassError').textContent = 'Current passcode is incorrect.'; return; }
+        const newHash = await hashPasscode(code);
+        await fetch(FIREBASE_URL + '/passcode.json', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newHash)
+        });
+        hideModal();
+      } catch {
+        $('changePassError').textContent = 'Failed to update. Check connection.';
+      }
+    };
+  }
+
   function getRole(roleId) {
     return state.roles.find(r => r.id === roleId);
   }
@@ -647,13 +812,6 @@
       `;
       goldEl.appendChild(div);
     }
-
-    // Google Sheets config
-    $('sheetsApiKey').value = state.sheetsConfig.apiKey || '';
-    $('sheetsSpreadsheetId').value = state.sheetsConfig.spreadsheetId || '';
-    $('sheetsSheetName').value = state.sheetsConfig.sheetName || 'Sheet1';
-    $('syncStatus').textContent = state.sheetsConfig.enabled ? 'Connected' : 'Local';
-    $('syncStatus').className = 'sync-status' + (state.sheetsConfig.enabled ? ' connected' : '');
   }
 
   // === HTML ESCAPING ===
@@ -728,203 +886,72 @@
     };
   }
 
-  // === GOOGLE SHEETS API ===
-  async function sheetsFetch(range, method = 'GET', body = null) {
-    const { apiKey, spreadsheetId, sheetName } = state.sheetsConfig;
-    if (!apiKey || !spreadsheetId) throw new Error('Google Sheets not configured');
+  // === FIREBASE DATABASE ===
+  let syncTimer = null;
+  let syncInFlight = false;
 
-    const encodedRange = encodeURIComponent(`${sheetName}!${range}`);
-    let url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodedRange}?key=${encodeURIComponent(apiKey)}`;
-
-    const opts = { method };
-    if (method === 'PUT') {
-      url += '&valueInputOption=USER_ENTERED';
-      opts.headers = { 'Content-Type': 'application/json' };
-      opts.body = JSON.stringify(body);
-    }
-
-    const res = await fetch(url, opts);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `Sheets API error: ${res.status}`);
-    }
-    return res.json();
+  function scheduleSync() {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => pushToFirebase(), 1500);
   }
 
-  async function pullFromSheets() {
+  function updateSyncBadge(text, ok) {
+    const el = $('syncStatus');
+    el.textContent = text;
+    el.className = 'sync-status' + (ok ? ' connected' : '');
+  }
+
+  async function loadFromFirebase() {
     try {
-      $('sheetsStatus').textContent = 'Pulling data...';
-      $('sheetsStatus').style.color = '#60a5fa';
+      updateSyncBadge('Loading...', false);
+      const res = await fetch(FIREBASE_URL + '/state.json');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
 
-      // Read employee data range (rows 1-100, columns A-Z)
-      const data = await sheetsFetch('A1:Z100');
-      const rows = data.values || [];
-
-      if (rows.length < 3) {
-        $('sheetsStatus').textContent = 'Sheet appears empty or has unexpected format.';
-        $('sheetsStatus').style.color = '#f87171';
-        return;
-      }
-
-      // Row 1: roles row. Row 2: names. Row 3: state IDs. Row 4+: data.
-      // Parse employees from columns B onward
-      const roleRow = rows[0] || [];
-      const nameRow = rows[1] || [];
-      const idRow = rows[2] || [];
-
-      const newEmployees = [];
-      const newWork = {};
-
-      for (let col = 1; col < nameRow.length; col++) {
-        const name = (nameRow[col] || '').trim();
-        if (!name) continue;
-
-        const roleName = (roleRow[col] || '').trim();
-        const stateId = (idRow[col] || '').trim();
-
-        // Match role
-        const role = state.roles.find(r => r.name.toLowerCase() === roleName.toLowerCase());
-        const empId = uid();
-
-        newEmployees.push({
-          id: empId,
-          name,
-          stateId,
-          roleId: role ? role.id : 'mechanic',
-          active: true
-        });
-
-        // Parse work data from rows 4+ (index 3+)
-        const work = { inventory: {}, entries: [] };
-        // Row 4 (index 3): Total Sales - skip, calculated
-        // Row 5 (index 4): Net Sales - skip, calculated
-        // Rows 6-10 (index 5-9): Inventory counts
-        const inventoryServices = ['lockpick', 'clean_kit', 'repair_kit', 'adv_repair_kit'];
-        for (let invIdx = 0; invIdx < inventoryServices.length && (invIdx + 5) < rows.length; invIdx++) {
-          const cellVal = (rows[invIdx + 5] || [])[col] || '';
-          // Parse "Lockpick x5" or just "5"
-          const match = cellVal.match(/x?(\d+)/i);
-          if (match) {
-            const qty = parseInt(match[1]);
-            if (qty > 0) work.inventory[inventoryServices[invIdx]] = qty;
+      if (data) {
+        Object.assign(state, data);
+        // Re-hydrate Infinity for gold pricing
+        if (state.goldPricing) {
+          for (const tier of state.goldPricing) {
+            if (tier.max === null || tier.max === 'Infinity') tier.max = Infinity;
           }
         }
-
-        // Row 10 (index 9): Upgrades count
-        if (rows[9]) {
-          const upgradeCell = (rows[9][col] || '');
-          const upgradeMatch = upgradeCell.match(/x?(\d+)/i);
-          if (upgradeMatch) {
-            // Upgrades count - we don't have a specific "upgrades" service, skip for now
-          }
-        }
-
-        // Rows 11+ (index 10+): Service entries
-        for (let r = 10; r < rows.length; r++) {
-          const cellVal = ((rows[r] || [])[col] || '').trim();
-          if (!cellVal) continue;
-          const svc = state.services.find(s => s.name.toLowerCase() === cellVal.toLowerCase());
-          if (svc) {
-            work.entries.push({ id: uid(), serviceId: svc.id, timestamp: Date.now() });
-          }
-        }
-
-        newWork[empId] = work;
-      }
-
-      if (newEmployees.length > 0) {
-        state.employees = newEmployees;
-        state.work = newWork;
-        state.selectedEmployeeId = null;
-        saveState();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         render();
       }
-
-      $('sheetsStatus').textContent = `Pulled ${newEmployees.length} employees from sheet.`;
-      $('sheetsStatus').style.color = '#4ade80';
+      updateSyncBadge('Synced', true);
+      if ($('firebaseStatus')) {
+        $('firebaseStatus').textContent = 'Connected to Firebase.';
+        $('firebaseStatus').style.color = '#4ade80';
+      }
     } catch (err) {
-      $('sheetsStatus').textContent = 'Error: ' + err.message;
-      $('sheetsStatus').style.color = '#f87171';
+      updateSyncBadge('Offline', false);
+      if ($('firebaseStatus')) {
+        $('firebaseStatus').textContent = 'Could not reach Firebase: ' + err.message + '. Using local data.';
+        $('firebaseStatus').style.color = '#f87171';
+      }
     }
   }
 
-  async function pushToSheets() {
+  async function pushToFirebase() {
+    if (syncInFlight) return;
+    syncInFlight = true;
     try {
-      $('sheetsStatus').textContent = 'Pushing data...';
-      $('sheetsStatus').style.color = '#60a5fa';
+      updateSyncBadge('Saving...', false);
+      const payload = JSON.parse(JSON.stringify(state, (key, val) => val === Infinity ? 'Infinity' : val));
 
-      const activeEmps = state.employees.filter(e => e.active);
-      const rows = [];
+      const res = await fetch(FIREBASE_URL + '/state.json', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-      // Row 1: SAA + roles
-      const r1 = ['SAA'];
-      for (const emp of activeEmps) {
-        const role = getRole(emp.roleId);
-        r1.push(role ? role.name : '');
-      }
-      rows.push(r1);
-
-      // Row 2: Name header + names
-      const r2 = ['Name'];
-      for (const emp of activeEmps) r2.push(emp.name);
-      rows.push(r2);
-
-      // Row 3: State ID
-      const r3 = ['State ID'];
-      for (const emp of activeEmps) r3.push(emp.stateId);
-      rows.push(r3);
-
-      // Row 4: Total Sales
-      const r4 = ['Total Sales'];
-      for (const emp of activeEmps) r4.push('$' + calcEmployeeSales(emp.id));
-      rows.push(r4);
-
-      // Row 5: Net Sales
-      const r5 = ['Net Sales'];
-      for (const emp of activeEmps) {
-        const s = calcEmployeeSales(emp.id);
-        const c = calcEmployeeCommission(emp.id);
-        r5.push('$' + (s - c));
-      }
-      rows.push(r5);
-
-      // Rows 6-10: Inventory
-      const invServices = state.services.filter(s => s.category === 'inventory');
-      for (const svc of invServices) {
-        const row = [svc.name];
-        for (const emp of activeEmps) {
-          const w = getEmployeeWork(emp.id);
-          const qty = w.inventory[svc.id] || 0;
-          row.push(`${svc.name} x${qty}`);
-        }
-        rows.push(row);
-      }
-
-      // Service entries rows
-      const maxEntries = Math.max(...activeEmps.map(e => getEmployeeWork(e.id).entries.length), 0);
-      for (let i = 0; i < maxEntries; i++) {
-        const row = [''];
-        for (const emp of activeEmps) {
-          const w = getEmployeeWork(emp.id);
-          const entry = w.entries[i];
-          if (entry) {
-            const svc = getService(entry.serviceId);
-            row.push(svc ? svc.name : '');
-          } else {
-            row.push('');
-          }
-        }
-        rows.push(row);
-      }
-
-      const range = `A1:${String.fromCharCode(65 + activeEmps.length)}${rows.length}`;
-      await sheetsFetch(range, 'PUT', { values: rows });
-
-      $('sheetsStatus').textContent = 'Pushed successfully!';
-      $('sheetsStatus').style.color = '#4ade80';
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      updateSyncBadge('Synced', true);
     } catch (err) {
-      $('sheetsStatus').textContent = 'Error: ' + err.message;
-      $('sheetsStatus').style.color = '#f87171';
+      updateSyncBadge('Sync Error', false);
+    } finally {
+      syncInFlight = false;
     }
   }
 
@@ -1058,25 +1085,20 @@
       render();
     };
 
-    // Settings: Google Sheets
-    $('sheetsSaveBtn').onclick = () => {
-      state.sheetsConfig.apiKey = $('sheetsApiKey').value.trim();
-      state.sheetsConfig.spreadsheetId = $('sheetsSpreadsheetId').value.trim();
-      state.sheetsConfig.sheetName = $('sheetsSheetName').value.trim() || 'Sheet1';
-      state.sheetsConfig.enabled = !!(state.sheetsConfig.apiKey && state.sheetsConfig.spreadsheetId);
-      saveState();
-      renderSettings();
-      $('sheetsStatus').textContent = state.sheetsConfig.enabled ? 'Configuration saved!' : 'Disconnected.';
-      $('sheetsStatus').style.color = state.sheetsConfig.enabled ? '#4ade80' : '#a0a0a0';
+    // Settings: Firebase sync
+    $('firebaseForceSync').onclick = () => {
+      $('firebaseStatus').textContent = 'Syncing...';
+      $('firebaseStatus').style.color = '#60a5fa';
+      pushToFirebase().then(() => {
+        $('firebaseStatus').textContent = 'Force sync complete!';
+        $('firebaseStatus').style.color = '#4ade80';
+      });
     };
 
-    $('sheetsPullBtn').onclick = pullFromSheets;
-    $('sheetsPushBtn').onclick = pushToSheets;
-
-    $('sheetsDisconnectBtn').onclick = () => {
-      state.sheetsConfig = { apiKey: '', spreadsheetId: '', sheetName: 'Sheet1', enabled: false };
-      saveState();
-      renderSettings();
+    $('firebaseResetRemote').onclick = () => {
+      showConfirmModal('Reset Firebase data to current local data?', () => {
+        pushToFirebase();
+      });
     };
 
     // Data management
@@ -1105,8 +1127,37 @@
       if (e.key === 'Escape') hideModal();
     });
 
-    // Initial render
+    // Lock toggle button
+    $('lockToggle').onclick = async () => {
+      if (unlocked) {
+        unlocked = false;
+        sessionStorage.removeItem('saa_unlocked');
+        applyLockState();
+        render();
+      } else {
+        const exists = await checkPasscodeExists();
+        if (exists) {
+          showUnlockModal();
+        } else {
+          showSetPasscodeModal();
+        }
+      }
+    };
+
+    // Change passcode
+    $('changePasscodeBtn').onclick = () => showChangePasscodeModal();
+
+    // Restore session unlock
+    if (sessionStorage.getItem('saa_unlocked') === '1') {
+      unlocked = true;
+    }
+    applyLockState();
+
+    // Initial render (from local cache, fast)
     render();
+
+    // Then load latest from Firebase (async, overrides if newer)
+    loadFromFirebase();
   }
 
   init();

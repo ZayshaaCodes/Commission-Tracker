@@ -20,7 +20,9 @@
         <span class="event-toggle-label">Event Mode</span>
       </label>
       <span class="header-divider"></span>
-      <span id="syncStatus" class="sync-status">Local</span>
+      <span id="syncStatus" class="sync-status">Loading...</span>
+      <span class="header-divider"></span>
+      <button class="btn small" id="lockToggle">🔒 Locked</button>
     </div>
   </div>
 
@@ -178,32 +180,29 @@
         <div id="goldPricingEditor"></div>
       </div>
 
-      <!-- Google Sheets -->
+      <!-- Firebase Sync Status -->
       <div class="panel">
         <div class="panel-header">
-          <h2>Google Sheets Sync</h2>
+          <h2>Firebase Sync</h2>
         </div>
         <div class="sheets-config">
-          <div class="control-group">
-            <label>API Key</label>
-            <input id="sheetsApiKey" type="password" placeholder="Your Google API Key" style="flex:1;" />
+          <div class="muted" id="firebaseStatus">All data is automatically synced to Firebase.</div>
+          <div class="control-group" style="gap:8px;margin-top:8px;">
+            <button class="btn" id="firebaseForceSync">Force Sync Now</button>
+            <button class="btn danger" id="firebaseResetRemote">Reset Remote Data</button>
           </div>
-          <div class="control-group">
-            <label>Spreadsheet ID</label>
-            <input id="sheetsSpreadsheetId" placeholder="Spreadsheet ID from URL" style="flex:1;" />
-          </div>
-          <div class="control-group">
-            <label>Sheet Name</label>
-            <input id="sheetsSheetName" value="Sheet1" style="flex:1;" />
-          </div>
-          <div class="control-group" style="gap:8px;">
-            <button class="btn primary" id="sheetsSaveBtn">Save Config</button>
-            <button class="btn" id="sheetsPullBtn">Pull from Sheet</button>
-            <button class="btn" id="sheetsPushBtn">Push to Sheet</button>
-            <button class="btn danger" id="sheetsDisconnectBtn">Disconnect</button>
-          </div>
-          <div class="muted" id="sheetsStatus">
-            Configure your Google Sheets API credentials to enable cloud sync.
+        </div>
+      </div>
+
+      <!-- Passcode -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Access Control</h2>
+        </div>
+        <div class="sheets-config">
+          <div class="muted">Only people with the passcode can edit data. Viewers can still see the dashboard.</div>
+          <div class="control-group" style="gap:8px;margin-top:8px;">
+            <button class="btn" id="changePasscodeBtn">Change Passcode</button>
           </div>
         </div>
       </div>

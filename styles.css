@@ -136,7 +136,7 @@ input[type="checkbox"] {
 
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-input[type="number"] { -moz-appearance: textfield; }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 
 /* ===================== PANELS ===================== */
 .panel {
@@ -233,6 +233,22 @@ th {
   background: #1e5f2b;
   border-color: #16a34a;
   color: #86efac;
+}
+
+/* ===================== LOCK / READ-ONLY ===================== */
+body.locked .counter-btn,
+body.locked .service-btn,
+body.locked .log-delete,
+body.locked .ec-actions,
+body.locked .toggle-switch,
+body.locked .add-employee-form,
+body.locked #clearEmployeeWork,
+body.locked .event-toggle {
+  display: none !important;
+}
+
+body.locked .counter-controls {
+  pointer-events: none;
 }
 
 /* ===================== DASHBOARD ===================== */
