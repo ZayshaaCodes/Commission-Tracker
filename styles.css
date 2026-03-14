@@ -934,6 +934,36 @@ body.access-employee .event-toggle {
   font-weight: 700;
 }
 
+/* ===================== DASHBOARD MAIN ROW ===================== */
+.dashboard-main-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  align-items: flex-start;
+}
+
+.dashboard-table-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.dashboard-feed-col {
+  width: 25%;
+  flex-shrink: 0;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-main-row {
+    flex-direction: column;
+  }
+  .dashboard-feed-col {
+    width: 100%;
+    max-height: 300px;
+  }
+}
+
 /* ===================== DASHBOARD CHARTS ===================== */
 .dashboard-charts-row {
   display: grid;

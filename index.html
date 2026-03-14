@@ -49,34 +49,36 @@
       </div>
     </div>
 
-    <div class="panel" style="margin-top:12px;">
-      <div class="panel-header">
-        <h2>Employee Summary</h2>
-        <div class="panel-actions">
-          <button class="btn small" id="exportCsvBtn">Export CSV</button>
+    <div class="dashboard-main-row">
+      <div class="panel dashboard-table-col">
+        <div class="panel-header">
+          <h2>Employee Summary</h2>
+          <div class="panel-actions">
+            <button class="btn small" id="exportCsvBtn">Export CSV</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="dashboardTable">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Role</th>
+                <th>Services</th>
+                <th>Gross Sales</th>
+                <th>Commission</th>
+                <th>Net Sales</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardBody"></tbody>
+          </table>
         </div>
       </div>
-      <div class="table-wrap">
-        <table id="dashboardTable">
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Role</th>
-              <th>Services</th>
-              <th>Gross Sales</th>
-              <th>Commission</th>
-              <th>Net Sales</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="dashboardBody"></tbody>
-        </table>
-      </div>
-    </div>
 
-    <div id="activityFeedPanel" class="panel owner-only" style="margin-top:12px;display:none;">
-      <div class="panel-header"><h2>Activity Feed</h2></div>
-      <div id="activityFeed" class="activity-feed"></div>
+      <div id="activityFeedPanel" class="panel dashboard-feed-col owner-only" style="display:none;">
+        <div class="panel-header"><h2>Activity Feed</h2></div>
+        <div id="activityFeed" class="activity-feed"></div>
+      </div>
     </div>
   </div>
   <div id="commissionsTab" class="tab-content">
