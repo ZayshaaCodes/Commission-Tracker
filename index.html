@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SAA Commission Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-header">
+    <h1>SAA Commission Tracker</h1>
+    <div class="header-controls">
+      <button class="btn tab-btn active" data-tab="dashboard">Dashboard</button>
+      <button class="btn tab-btn" data-tab="commissions">Commissions</button>
+      <button class="btn tab-btn" data-tab="employees">Employees</button>
+      <button class="btn tab-btn" data-tab="settings">Settings</button>
+      <span class="header-divider"></span>
+      <label class="event-toggle" title="Toggle Event Pricing">
+        <input type="checkbox" id="eventModeToggle" />
+        <span class="event-toggle-label">Event Mode</span>
+      </label>
+      <span class="header-divider"></span>
+      <span id="syncStatus" class="sync-status">Local</span>
+    </div>
+  </div>
+
+  <!-- ===================== DASHBOARD ===================== -->
+  <div id="dashboardTab" class="tab-content active">
+    <div class="metrics-row" id="metricsRow"></div>
+    <div class="panel">
+      <div class="panel-header">
+        <h2>Employee Summary</h2>
+        <div class="panel-actions">
+          <button class="btn small" id="exportCsvBtn">Export CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="dashboardTable">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Role</th>
+              <th>State ID</th>
+              <th>Services</th>
+              <th>Gross Sales</th>
+              <th>Commission %</th>
+              <th>Commission $</th>
+              <th>Net Sales</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="dashboardBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="dashboard-bottom-row">
+      <div class="panel">
+        <div class="panel-header"><h2>Transaction Totals</h2></div>
+        <div id="transactionTotals"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h2>Gov Totals</h2></div>
+        <div id="govTotals"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== COMMISSIONS ===================== -->
+  <div id="commissionsTab" class="tab-content">
+    <div class="employee-picker" id="employeePicker"></div>
+
+    <div id="commissionWorkArea" class="commission-grid" style="display:none;">
+      <!-- Left: Work Entry -->
+      <div class="panel work-panel">
+        <div class="panel-header">
+          <h2 id="workEmployeeName">Select Employee</h2>
+          <div class="panel-actions">
+            <button class="btn danger small" id="clearEmployeeWork">Clear All</button>
+          </div>
+        </div>
+
+        <div class="inventory-section">
+          <h3>Inventory Items</h3>
+          <div id="inventoryCounters" class="counter-grid"></div>
+        </div>
+
+        <div class="services-section">
+          <h3>Log Service</h3>
+          <div id="serviceButtons" class="service-buttons"></div>
+        </div>
+      </div>
+
+      <!-- Right: Summary + Log -->
+      <div class="panel summary-panel">
+        <div class="panel-header">
+          <h2>Summary</h2>
+        </div>
+        <div id="employeeSummary" class="summary-cards"></div>
+
+        <h3 style="margin-top:16px;">Service Log</h3>
+        <div id="serviceLog" class="service-log"></div>
+      </div>
+    </div>
+
+    <div id="noEmployeeSelected" class="empty-state-large">
+      <div class="empty-icon">👆</div>
+      <p>Select an employee above to start logging services</p>
+    </div>
+  </div>
+
+  <!-- ===================== EMPLOYEES ===================== -->
+  <div id="employeesTab" class="tab-content">
+    <div class="panel" style="margin-bottom:12px;">
+      <div class="panel-header">
+        <h2>Add Employee</h2>
+      </div>
+      <div class="add-employee-form">
+        <input id="newEmpName" placeholder="Name" />
+        <input id="newEmpStateId" placeholder="State ID" />
+        <select id="newEmpRole"></select>
+        <button class="btn primary" id="addEmployeeBtn">Add Employee</button>
+      </div>
+    </div>
+
+    <div class="employee-filter">
+      <button class="btn small filter-btn active" data-filter="active">Active</button>
+      <button class="btn small filter-btn" data-filter="inactive">Inactive</button>
+      <button class="btn small filter-btn" data-filter="all">All</button>
+    </div>
+
+    <div id="employeeGrid" class="employee-grid"></div>
+  </div>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <div id="settingsTab" class="tab-content">
+    <div class="settings-grid">
+      <!-- Commission Rates -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Commission Rates</h2>
+          <div class="panel-actions">
+            <button class="btn small" id="addRoleBtn">+ Role</button>
+          </div>
+        </div>
+        <div id="rolesEditor"></div>
+      </div>
+
+      <!-- Service Pricing -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Service Pricing</h2>
+          <div class="panel-actions">
+            <button class="btn small" id="addServiceBtn">+ Service</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Price</th>
+                <th>Event Price</th>
+                <th>Category</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="servicesEditor"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Gold Pricing -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Gold Price (Per Bar Bulk)</h2>
+        </div>
+        <div id="goldPricingEditor"></div>
+      </div>
+
+      <!-- Google Sheets -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Google Sheets Sync</h2>
+        </div>
+        <div class="sheets-config">
+          <div class="control-group">
+            <label>API Key</label>
+            <input id="sheetsApiKey" type="password" placeholder="Your Google API Key" style="flex:1;" />
+          </div>
+          <div class="control-group">
+            <label>Spreadsheet ID</label>
+            <input id="sheetsSpreadsheetId" placeholder="Spreadsheet ID from URL" style="flex:1;" />
+          </div>
+          <div class="control-group">
+            <label>Sheet Name</label>
+            <input id="sheetsSheetName" value="Sheet1" style="flex:1;" />
+          </div>
+          <div class="control-group" style="gap:8px;">
+            <button class="btn primary" id="sheetsSaveBtn">Save Config</button>
+            <button class="btn" id="sheetsPullBtn">Pull from Sheet</button>
+            <button class="btn" id="sheetsPushBtn">Push to Sheet</button>
+            <button class="btn danger" id="sheetsDisconnectBtn">Disconnect</button>
+          </div>
+          <div class="muted" id="sheetsStatus">
+            Configure your Google Sheets API credentials to enable cloud sync.
+          </div>
+        </div>
+      </div>
+
+      <!-- Data Management -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Data Management</h2>
+        </div>
+        <div class="control-group" style="gap:8px;">
+          <button class="btn" id="exportJsonBtn">Export JSON</button>
+          <button class="btn" id="importJsonBtn">Import JSON</button>
+          <input type="file" id="importJsonFile" accept=".json" style="display:none;" />
+          <button class="btn danger" id="resetAllBtn">Reset All Data</button>
+        </div>
+        <div class="muted" style="margin-top:8px;">
+          All data is automatically saved to your browser's local storage.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="modalOverlay" class="modal-overlay" style="display:none;">
+    <div class="modal" id="modalContent"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
