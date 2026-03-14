@@ -945,7 +945,6 @@ body.access-employee .event-toggle {
 /* --- Activity Timeline --- */
 .timeline-chart {
   display: flex;
-  align-items: flex-end;
   gap: 4px;
   height: 160px;
   padding: 8px 4px 0;
@@ -965,6 +964,7 @@ body.access-employee .event-toggle {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  min-height: 0;
 }
 
 .tl-bar {
@@ -1012,6 +1012,7 @@ body.access-employee .event-toggle {
   font-size: 11px;
   color: #666;
   margin-top: 6px;
+  flex-shrink: 0;
 }
 
 .tl-label.today {
