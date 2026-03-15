@@ -1,0 +1,229 @@
+import { $, money, esc } from './utils.js';
+import { state, getRole, getService, getServicePrice, getEmployeeWork,
+         calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
+import { isOwner, isUnlocked } from './auth.js';
+import { render } from './app.js';
+
+export function renderDashboard() {
+  const activeEmps = state.employees.filter(e => e.active);
+
+  let totalSales = 0;
+  let totalCommissions = 0;
+
+  for (const emp of activeEmps) {
+    totalSales += calcEmployeeSales(emp.id);
+    totalCommissions += calcEmployeeCommission(emp.id);
+  }
+
+  const netRevenue = totalSales - totalCommissions;
+
+  // Metrics
+  $('metricsRow').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">Total Sales</div>
+      <div class="metric-value green">${money(totalSales)}</div>
+      <div class="metric-accent" style="background:#4ade80;"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Total Commissions</div>
+      <div class="metric-value amber">${money(totalCommissions)}</div>
+      <div class="metric-accent" style="background:#fbbf24;"></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Net Revenue</div>
+      <div class="metric-value blue">${money(netRevenue)}</div>
+      <div class="metric-accent" style="background:#60a5fa;"></div>
+    </div>
+  `;
+
+  // Charts (owner only)
+  const chartsRow = document.querySelector('.dashboard-charts-row');
+  if (chartsRow) chartsRow.style.display = isOwner() ? '' : 'none';
+  if (isOwner()) {
+    renderTimeline();
+    renderSalesChart(activeEmps);
+  }
+
+  // Employee table
+  const tbody = $('dashboardBody');
+  tbody.innerHTML = '';
+
+  const sorted = [...state.employees].sort((a, b) => {
+    if (a.active !== b.active) return a.active ? -1 : 1;
+    return calcEmployeeSales(b.id) - calcEmployeeSales(a.id);
+  });
+
+  for (const emp of sorted) {
+    const role = getRole(emp.roleId);
+    const sales = calcEmployeeSales(emp.id);
+    const comm = calcEmployeeCommission(emp.id);
+    const net = sales - comm;
+    const svcCount = calcEmployeeServiceCount(emp.id);
+
+    // Build tooltip with service breakdown
+    const work = getEmployeeWork(emp.id);
+    const tipLines = [];
+    for (const [svcId, qty] of Object.entries(work.inventory)) {
+      if (qty <= 0) continue;
+      const svc = getService(svcId);
+      if (svc) tipLines.push(`${svc.name} x${qty} — ${money(getServicePrice(svcId) * qty)}`);
+    }
+    const svcCounts = {};
+    for (const entry of work.entries) {
+      const svc = getService(entry.serviceId);
+      if (!svc) continue;
+      svcCounts[entry.serviceId] = (svcCounts[entry.serviceId] || { name: svc.name, count: 0, total: 0 });
+      svcCounts[entry.serviceId].count++;
+      svcCounts[entry.serviceId].total += getServicePrice(entry.serviceId);
+    }
+    for (const s of Object.values(svcCounts)) {
+      tipLines.push(`${s.name} x${s.count} — ${money(s.total)}`);
+    }
+
+    const tr = document.createElement('tr');
+    if (!emp.active) tr.style.opacity = '0.4';
+    tr.dataset.tipHtml = tipLines.map(l => `<div>${esc(l)}</div>`).join('') || '<div class="muted">No services logged</div>';
+    const canActivate = !emp.active && isUnlocked();
+    tr.innerHTML = `
+      <td style="font-weight:600;">${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></td>
+      <td><span class="role-badge" style="background:${role ? role.color : '#666'}22;color:${role ? role.color : '#888'};border-color:${role ? role.color : '#666'};">${esc(role ? role.name : 'Unknown')}</span></td>
+      <td>${svcCount}</td>
+      <td class="text-green">${money(sales)}</td>
+      <td class="text-amber">${money(comm)}</td>
+      <td class="text-blue">${money(net)}</td>
+      <td>${canActivate
+        ? `<button class="btn small success activate-btn" data-activate="${emp.id}">Activate</button>`
+        : `<span class="badge ${emp.active ? 'active' : 'inactive'}">${emp.active ? 'Active' : 'Inactive'}</span>`
+      }</td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  // Activate button handler
+  tbody.onclick = (e) => {
+    const btn = e.target.closest('[data-activate]');
+    if (!btn) return;
+    const emp = state.employees.find(em => em.id === btn.dataset.activate);
+    if (emp) {
+      emp.active = true;
+      render();
+    }
+  };
+
+  // Hover tooltip (follows cursor)
+  const tip = $('dashboardTooltip');
+  tbody.onmouseover = (e) => {
+    const tr = e.target.closest('tr[data-tip-html]');
+    if (!tr) { tip.style.display = 'none'; return; }
+    tip.innerHTML = tr.dataset.tipHtml;
+    tip.style.display = 'block';
+  };
+  tbody.onmousemove = (e) => {
+    if (tip.style.display === 'none') return;
+    tip.style.left = (e.pageX + 12) + 'px';
+    tip.style.top = (e.pageY + 16) + 'px';
+  };
+  tbody.onmouseleave = () => { tip.style.display = 'none'; };
+}
+
+// --- ACTIVITY TIMELINE ---
+function renderTimeline() {
+  const el = $('activityTimeline');
+  if (!el) return;
+
+  const allEntries = [];
+  for (const emp of state.employees) {
+    if (!emp.active) continue;
+    const work = getEmployeeWork(emp.id);
+    const role = getRole(emp.roleId);
+    const color = role ? role.color : '#666';
+    for (const entry of work.entries) {
+      allEntries.push({ timestamp: entry.timestamp, serviceId: entry.serviceId, color });
+    }
+  }
+
+  if (allEntries.length === 0) {
+    el.innerHTML = '<div class="chart-empty">No activity recorded yet</div>';
+    return;
+  }
+
+  const now = new Date();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    d.setHours(0, 0, 0, 0);
+    days.push({
+      start: d.getTime(),
+      end: d.getTime() + 86400000,
+      label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+      dateStr: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      revenue: 0,
+      count: 0,
+      isToday: i === 0
+    });
+  }
+
+  for (const entry of allEntries) {
+    for (const day of days) {
+      if (entry.timestamp >= day.start && entry.timestamp < day.end) {
+        day.revenue += getServicePrice(entry.serviceId);
+        day.count++;
+      }
+    }
+  }
+
+  const maxRevenue = Math.max(...days.map(d => d.revenue), 1);
+
+  let html = '<div class="timeline-chart">';
+  for (const day of days) {
+    const pct = Math.max((day.revenue / maxRevenue) * 100, 2);
+    const active = day.revenue > 0;
+    html += `
+      <div class="tl-col">
+        <div class="tl-bar-wrap">
+          <div class="tl-bar${active ? ' active' : ''}${day.isToday ? ' today' : ''}" style="height:${pct.toFixed(1)}%;">
+            <div class="tl-tooltip">${day.dateStr}<br>${money(day.revenue)} &middot; ${day.count} svc</div>
+          </div>
+        </div>
+        <span class="tl-label${day.isToday ? ' today' : ''}">${day.label}</span>
+      </div>`;
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// --- SALES BY EMPLOYEE CHART ---
+function renderSalesChart(activeEmps) {
+  const el = $('salesChart');
+  if (!el) return;
+
+  const empSales = activeEmps
+    .map(emp => ({
+      name: emp.name,
+      sales: calcEmployeeSales(emp.id),
+      color: (getRole(emp.roleId) || {}).color || '#666'
+    }))
+    .sort((a, b) => b.sales - a.sales);
+
+  if (empSales.length === 0 || empSales.every(e => e.sales === 0)) {
+    el.innerHTML = '<div class="chart-empty">No sales data yet</div>';
+    return;
+  }
+
+  const maxSales = Math.max(...empSales.map(e => e.sales), 1);
+
+  let html = '';
+  for (const e of empSales) {
+    const pct = (e.sales / maxSales * 100).toFixed(1);
+    html += `
+      <div class="sb-row">
+        <span class="sb-name">${esc(e.name)}</span>
+        <div class="sb-track">
+          <div class="sb-fill" style="width:${pct}%;background:${e.color};"></div>
+        </div>
+        <span class="sb-amount">${money(e.sales)}</span>
+      </div>`;
+  }
+  el.innerHTML = html;
+}

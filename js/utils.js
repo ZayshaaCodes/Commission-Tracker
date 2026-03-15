@@ -1,12 +1,31 @@
 // === DOM HELPERS & UTILITIES ===
 export const $ = id => document.getElementById(id);
 export const money = n => '$' + (Math.round((n + Number.EPSILON) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0 });
-export const uid = () => crypto.randomUUID();
+export const uid = () =>
+  typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
 
 const escDiv = document.createElement('div');
 export function esc(text) {
   escDiv.textContent = text;
   return escDiv.innerHTML;
+}
+
+export function timeAgo(ts) {
+  const seconds = Math.floor((Date.now() - ts) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + 'm ago';
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + 'h ago';
+  const days = Math.floor(hours / 24);
+  if (days < 30) return days + 'd ago';
+  const months = Math.floor(days / 30);
+  return months + 'mo ago';
 }
 
 // djb2-based hash — not cryptographic, but sufficient for a client-side passcode

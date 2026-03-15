@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#1a1a1a" />
   <meta name="description" content="SAA Commission Tracker — track employee commissions and services" />
   <title>Dreamworks Commission</title>
+  <link rel="icon" href="data:," />
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -16,7 +17,7 @@
   </div>
 
   <div class="app-header">
-    <h1>Dreamworks Commission</h1>
+    <img src="Logo_a_ds.png" alt="Dreamworks Customs" class="header-logo" />
     <div class="header-controls">
       <button class="btn tab-btn active" data-tab="dashboard">Dashboard</button>
       <button class="btn tab-btn" data-tab="commissions">Commissions</button>
@@ -86,7 +87,7 @@
       <div class="panel">
         <div class="panel-header">
           <div id="workEmployeeHeader" class="work-emp-header">
-            <span class="work-emp-name">Select Employee</span>
+            <span class="work-emp-name" id="workEmployeeName">Select Employee</span>
           </div>
           <div class="panel-actions">
             <button class="btn danger small" id="clearEmployeeWork">Clear All</button>
@@ -255,6 +256,6 @@
     <div class="modal" id="modalContent"></div>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

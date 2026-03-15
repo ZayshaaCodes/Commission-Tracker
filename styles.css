@@ -23,6 +23,11 @@ h2 { font-size: 16px; margin: 0; color: #fff; }
 h3 { font-size: 14px; margin: 0 0 8px; color: #fff; font-weight: 600; }
 
 /* ===================== HEADER ===================== */
+.header-logo {
+  height: 70px;
+  width: auto;
+}
+
 .app-header {
   display: flex;
   align-items: center;
@@ -503,77 +508,60 @@ body.access-employee .event-toggle {
 .services-section { margin-bottom: 16px; }
 
 .service-buttons {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 10px;
-}
-
-.svc-tile {
-  background: #2d2d2d;
-  border: 1px solid #333;
-  border-top: 3px solid;
-  border-radius: 8px;
-  padding: 10px;
-}
-
-.svc-tile-header {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.svc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.svc-row-label {
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #ccc;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #3a3a3a;
-}
-
-.svc-tile-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.svc-tile-count {
-  margin-left: auto;
-  font-size: 10px;
   color: #666;
-  font-weight: 500;
+  width: 80px;
+  flex-shrink: 0;
+  padding: 9px 0 9px 8px;
+  border-left: 3px solid #666;
 }
 
-.svc-tile-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 5px;
+.svc-row-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
 }
 
 .service-btn {
-  padding: 8px 10px;
+  padding: 6px 12px;
   border-radius: 6px;
-  border: 1px solid;
-  background: #3a3a3a;
+  border: 1px solid #444;
+  background: #2d2d2d;
   color: #fff;
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
   font-size: 13px;
   font-family: inherit;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
 }
 
 .service-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(0,0,0,0.5);
-  filter: brightness(1.2);
+  filter: brightness(1.3);
 }
 
-.service-btn:active { transform: scale(0.97); }
+.service-btn:active { transform: scale(0.98); }
 
-.service-btn .svc-name { font-weight: 600; display: block; line-height: 1.3; }
-.service-btn .svc-price { font-size: 11px; opacity: 0.7; }
+.service-btn .svc-name { font-weight: 600; white-space: nowrap; }
+.service-btn .svc-price { font-size: 11px; color: #888; white-space: nowrap; }
 
 /* Summary Cards */
 .summary-cards {
@@ -1369,8 +1357,9 @@ tbody tr:hover { background-color: rgba(255,255,255,0.04); }
 
   .counter-grid { grid-template-columns: 1fr; }
 
-  .service-buttons { grid-template-columns: 1fr; }
-  .svc-tile-grid { grid-template-columns: repeat(2, 1fr); }
+  .service-buttons { gap: 6px; }
+  .svc-row { flex-direction: column; gap: 4px; }
+  .svc-row-label { width: auto; padding-top: 0; }
 
   .emp-row {
     flex-wrap: wrap;
