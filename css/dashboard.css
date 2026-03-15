@@ -13,6 +13,8 @@
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   transition: transform 0.15s, border-color 0.15s;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .metric-card:hover {
@@ -21,17 +23,23 @@
 }
 
 .metric-card .metric-label {
-  font-size: 12px;
+  font-size: clamp(10px, 2vw, 12px);
   color: #a0a0a0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .metric-card .metric-value {
-  font-size: 24px;
+  font-size: clamp(16px, 4vw, 24px);
   font-weight: 700;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .metric-card .metric-value.green { color: #4ade80; }
@@ -169,10 +177,24 @@
   font-size: 13px;
 }
 
-/* ===================== ACTIVITY FEED ===================== */
-.activity-feed {
-  max-height: 400px;
-  overflow-y: auto;
+/* --- Sortable Column Headers --- */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+th.sortable:hover {
+  color: #93c5fd;
+}
+
+th.sortable.sorted {
+  color: #60a5fa;
+}
+
+.sort-arrow {
+  font-size: 10px;
+  opacity: 0.7;
 }
 
 /* Row hover tooltip (cursor-following) */

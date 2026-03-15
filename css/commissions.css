@@ -3,6 +3,12 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.work-emp-header:hover {
+  opacity: 0.8;
 }
 
 .work-emp-name {
@@ -18,55 +24,102 @@
   color: #888;
 }
 
-.employee-picker {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-  padding: 10px;
-  background: #2d2d2d;
-  border: 1px solid #333;
-  border-radius: 8px;
+/* --- Employee Dropdown Selector --- */
+.emp-dropdown-wrap {
+  position: relative;
 }
 
-.emp-pill {
-  padding: 8px 14px;
-  border-radius: 999px;
+.panel-header.emp-dropdown-wrap {
+  position: relative;
+}
+
+.emp-dropdown-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #2d2d2d;
   border: 2px solid #444;
-  background: #3a3a3a;
+  border-radius: 8px;
   color: #e0e0e0;
   cursor: pointer;
-  transition: all 0.15s;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
+  transition: border-color 0.15s;
+}
+
+.emp-dropdown-btn:hover {
+  border-color: #666;
+}
+
+.emp-dropdown-arrow {
+  font-size: 12px;
+  color: #888;
+  margin-left: 8px;
+}
+
+.emp-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  width: max-content;
+  max-width: 340px;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 0 0 8px 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.emp-dropdown-item {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  transition: background 0.1s;
+  border-bottom: 1px solid #333;
 }
 
-.emp-pill:hover {
-  border-color: #666;
-  background: #4a4a4a;
-  transform: translateY(-1px);
-}
+.emp-dropdown-item:last-child { border-bottom: none; }
+.emp-dropdown-item:hover { background: #3a3a3a; }
 
-.emp-pill.selected {
-  border-color: #2563eb;
+.emp-dropdown-item.selected {
   background: #1e3a5f;
   color: #93c5fd;
-  box-shadow: 0 0 12px rgba(37,99,235,0.3);
 }
 
-.emp-pill .emp-pill-sales {
-  font-size: 11px;
-  opacity: 0.7;
-}
-
-.emp-pill .emp-pill-dot {
+.emp-dropdown-item .emp-pill-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   display: inline-block;
+  flex-shrink: 0;
+}
+
+.emp-dropdown-item .emp-pill-sales,
+.emp-dropdown-btn .emp-pill-sales {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-left: auto;
+}
+
+.emp-dropdown-btn .emp-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 .commission-grid {
@@ -81,18 +134,22 @@
 
 .empty-state-large {
   text-align: center;
-  padding: 60px 20px;
-  color: #666;
+  padding: 80px 20px;
+  color: #888;
 }
 
 .empty-state-large .empty-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
+  font-size: 56px;
+  margin-bottom: 16px;
 }
 
-.empty-state-large p {
+.empty-state-large .empty-msg {
   font-size: 16px;
-  margin: 0;
+  margin: 0 0 4px;
+  color: #aaa;
+  max-width: 340px;
+  margin-inline: auto;
+  line-height: 1.5;
 }
 
 /* Inventory Counters */
@@ -274,6 +331,14 @@
   color: #4ade80;
   font-weight: 600;
   margin: 0 8px;
+}
+
+.log-entry .log-time {
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+  min-width: 55px;
+  text-align: right;
 }
 
 .log-entry .log-delete {

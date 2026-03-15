@@ -1,13 +1,14 @@
-/* ===================== CREW TAB ===================== */
+/* ===================== STATS TAB ===================== */
 .crew-stats-bar {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 12px 24px;
   padding: 10px 14px;
   margin-bottom: 12px;
   background-color: #2d2d2d;
   border: 1px solid #333;
   border-radius: 8px;
+  flex-wrap: wrap;
 }
 
 .crew-stats-title {
@@ -24,7 +25,8 @@
 
 .crew-stats {
   display: flex;
-  gap: 24px;
+  gap: 12px 24px;
+  flex-wrap: wrap;
 }
 
 .crew-stat {
@@ -36,6 +38,12 @@
 
 .crew-stat-val { font-size: 18px; font-weight: 700; }
 .crew-stat-lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* --- Activity Feed Container --- */
+.activity-feed {
+  max-height: 400px;
+  overflow-y: auto;
+}
 
 /* --- Activity Feed Items --- */
 .af-item {
@@ -100,6 +108,75 @@
 @media (max-width: 600px) {
   .af-name { min-width: 60px; }
   .af-time { display: none; }
+}
+
+/* --- Meta feed items (clears & payouts) --- */
+.af-meta {
+  background: rgba(245, 158, 11, 0.05);
+  border-left: 2px solid #f59e0b;
+}
+
+.af-meta .af-action {
+  color: #d4a054;
+  font-style: italic;
+}
+
+/* --- Payout History --- */
+.payout-history {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.ph-entry {
+  padding: 12px;
+  border-bottom: 1px solid #333;
+}
+
+.ph-entry:last-child { border-bottom: none; }
+
+.ph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ph-date {
+  font-weight: 600;
+  color: #e0e0e0;
+  font-size: 13px;
+}
+
+.ph-totals {
+  font-size: 12px;
+  color: #aaa;
+}
+
+.ph-employees {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ph-emp {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.ph-emp-name {
+  min-width: 110px;
+  color: #ccc;
+  font-weight: 500;
+}
+
+.ph-emp-gross, .ph-emp-comm {
+  font-weight: 600;
+  min-width: 65px;
 }
 
 /* --- Sales by Employee Bar Chart --- */

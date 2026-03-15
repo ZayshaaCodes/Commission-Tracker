@@ -15,6 +15,13 @@ export function esc(text) {
   return escDiv.innerHTML;
 }
 
+// Returns a Date object adjusted to represent GMT-8 (PST)
+export function toGMT8(date) {
+  const d = new Date(date);
+  const utc = d.getTime() + d.getTimezoneOffset() * 60000;
+  return new Date(utc - 8 * 3600000);
+}
+
 export function timeAgo(ts) {
   const seconds = Math.floor((Date.now() - ts) / 1000);
   if (seconds < 60) return 'just now';

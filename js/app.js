@@ -1,5 +1,5 @@
 import { $, uid } from './utils.js';
-import { state, saveState } from './state.js';
+import { state, saveState, getRole, calcEmployeeSales, calcEmployeeCommission } from './state.js';
 import { FIREBASE_URL, loadFromFirebase, pushToFirebase, markInitialLoadDone,
          onRemoteUpdate, startStreaming } from './firebase.js';
 import { hideModal, showConfirmModal } from './modals.js';
@@ -58,10 +58,10 @@ function applyLockState() {
 
   const settingsTab = document.querySelector('[data-tab="settings"]');
   const employeesTab = document.querySelector('[data-tab="employees"]');
-  const crewTab = document.querySelector('[data-tab="crew"]');
+  const statsTab = document.querySelector('[data-tab="stats"]');
   if (settingsTab) settingsTab.style.display = level === 'owner' ? '' : 'none';
   if (employeesTab) employeesTab.style.display = level === 'owner' ? '' : 'none';
-  if (crewTab) crewTab.style.display = level === 'owner' ? '' : 'none';
+  if (statsTab) statsTab.style.display = level === 'owner' ? '' : 'none';
 
   if (level !== 'owner' && (currentTab === 'settings' || currentTab === 'employees' || currentTab === 'stats')) {
     switchTab('dashboard');
@@ -123,7 +123,29 @@ async function init() {
   // Clear employee work
   $('clearEmployeeWork').onclick = () => {
     if (!state.selectedEmployeeId) return;
+    const emp = state.employees.find(e => e.id === state.selectedEmployeeId);
+    if (!emp) return;
+    const gross = calcEmployeeSales(emp.id);
+    const comm = calcEmployeeCommission(emp.id);
+    if (gross === 0) {
+      showConfirmModal('Clear all logged services for this employee?', () => {
+        state.work[state.selectedEmployeeId] = { inventory: {}, entries: [] };
+        render();
+      });
+      return;
+    }
     showConfirmModal('Clear all logged services for this employee?', () => {
+      const role = getRole(emp.roleId);
+      if (!Array.isArray(state.activityLog)) state.activityLog = [];
+      state.activityLog.push({
+        id: uid(),
+        type: 'clear',
+        empName: emp.name,
+        color: role ? role.color : '#666',
+        gross,
+        commission: comm,
+        timestamp: Date.now()
+      });
       state.work[state.selectedEmployeeId] = { inventory: {}, entries: [] };
       render();
     });

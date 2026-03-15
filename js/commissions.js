@@ -1,37 +1,90 @@
-import { $, money, uid, esc } from './utils.js';
+import { $, money, uid, esc, timeAgo } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
          calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js';
+import { getAccessLevel } from './auth.js';
 
 export function renderCommissions() {
   const activeEmps = state.employees.filter(e => e.active);
-  const picker = $('employeePicker');
-  picker.innerHTML = '';
+  const dropList = $('employeeDropdownList');
+  const noEmpDropList = $('noEmpDropdownList');
 
-  for (const emp of activeEmps) {
-    const role = getRole(emp.roleId);
-    const sales = calcEmployeeSales(emp.id);
-    const pill = document.createElement('button');
-    pill.className = 'emp-pill' + (state.selectedEmployeeId === emp.id ? ' selected' : '');
-    pill.innerHTML = `
-      <span class="emp-pill-dot" style="background:${role ? role.color : '#666'};"></span>
-      ${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span>
-      <span class="emp-pill-sales">${money(sales)}</span>
-    `;
-    pill.onclick = () => {
-      state.selectedEmployeeId = emp.id;
-      renderCommissions();
-    };
-    picker.appendChild(pill);
+  // Build dropdown items for both locations
+  function populateDropdown(listEl) {
+    listEl.innerHTML = '';
+    for (const emp of activeEmps) {
+      const role = getRole(emp.roleId);
+      const item = document.createElement('button');
+      item.className = 'emp-dropdown-item' + (state.selectedEmployeeId === emp.id ? ' selected' : '');
+      item.innerHTML = `
+        <span class="emp-pill-dot" style="background:${role ? role.color : '#666'};"></span>
+        ${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span>
+      `;
+      item.onclick = (e) => {
+        e.stopPropagation();
+        state.selectedEmployeeId = emp.id;
+        listEl.style.display = 'none';
+        saveState();
+        renderCommissions();
+      };
+      listEl.appendChild(item);
+    }
   }
+
+  populateDropdown(dropList);
+  populateDropdown(noEmpDropList);
+
+  // Header click toggles dropdown
+  const header = $('workEmployeeHeader');
+  header.onclick = (e) => {
+    if (e.target.closest('.panel-actions')) return;
+    e.stopPropagation();
+    dropList.style.display = dropList.style.display === 'none' ? '' : 'none';
+  };
+
+  // No-employee state dropdown
+  const noEmpBtn = $('noEmpDropdownBtn');
+  noEmpBtn.onclick = (e) => {
+    e.stopPropagation();
+    noEmpDropList.style.display = noEmpDropList.style.display === 'none' ? '' : 'none';
+  };
+
+  // Close on outside click
+  const closeDropdown = (e) => {
+    if (!e.target.closest('.emp-dropdown-wrap')) {
+      dropList.style.display = 'none';
+      noEmpDropList.style.display = 'none';
+    }
+  };
+  document.removeEventListener('click', closeDropdown);
+  document.addEventListener('click', closeDropdown);
 
   if (!state.selectedEmployeeId || !activeEmps.find(e => e.id === state.selectedEmployeeId)) {
     $('commissionWorkArea').style.display = 'none';
     $('noEmployeeSelected').style.display = '';
+
+    // Adapt empty state message based on whether employees exist
+    const emptyIcon = $('noEmployeeSelected').querySelector('.empty-icon');
+    const emptyMsg = $('noEmployeeSelected').querySelector('.empty-msg');
+    const emptyDropWrap = $('noEmployeeSelected').querySelector('.emp-dropdown-wrap');
+    if (activeEmps.length === 0) {
+      emptyIcon.textContent = '👥';
+      emptyMsg.textContent = getAccessLevel() === 'owner'
+        ? 'No employees added yet — head to the Employees tab to get started'
+        : 'No employees have been added yet';
+      emptyDropWrap.style.display = 'none';
+    } else {
+      emptyIcon.textContent = '👆';
+      emptyMsg.textContent = 'Select an employee to start logging services';
+      emptyDropWrap.style.display = '';
+    }
     return;
   }
 
   $('commissionWorkArea').style.display = '';
   $('noEmployeeSelected').style.display = 'none';
+
+  // Only owners can clear
+  $('clearEmployeeWork').style.display = getAccessLevel() === 'owner' ? '' : 'none';
 
   const emp = state.employees.find(e => e.id === state.selectedEmployeeId);
   const role = getRole(emp.roleId);
@@ -42,6 +95,7 @@ export function renderCommissions() {
     <span class="state-id-sep">|</span>
     <span class="work-emp-id">${esc(emp.stateId)}</span>
     ${role ? `<span class="role-badge" style="background:${role.color}22;color:${role.color};border-color:${role.color};">${esc(role.name)}</span>` : ''}
+    <span class="emp-dropdown-arrow">&#9662;</span>
   `;
 
   // Inventory counters
@@ -225,6 +279,7 @@ export function renderCommissions() {
       div.innerHTML = `
         <span class="log-name">${esc(item.name)}</span>
         <span class="log-price">${money(item.total)}</span>
+        <span class="log-time">${timeAgo(item.timestamp)}</span>
         ${deleteBtn}
       `;
       logEl.appendChild(div);

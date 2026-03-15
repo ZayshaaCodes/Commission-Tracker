@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="css/commissions.css">
   <link rel="stylesheet" href="css/employees.css">
   <link rel="stylesheet" href="css/settings.css">
-  <link rel="stylesheet" href="css/crew.css">
+  <link rel="stylesheet" href="css/stats.css">
   <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
@@ -23,22 +23,19 @@
   </div>
 
   <div class="app-header">
-    <img src="Logo_a_ds.png" alt="Dreamworks Customs" class="header-logo" />
-    <div class="header-controls">
+    <div class="header-row-top">
+      <img src="Logo_a_ds.png" alt="Dreamworks Customs" class="header-logo" />
+      <div class="header-status">
+        <button class="btn small" id="lockToggle">🔒 Locked</button>
+        <span id="syncDot" class="sync-dot" title="Loading..."></span>
+      </div>
+    </div>
+    <div class="header-row-tabs">
       <button class="btn tab-btn active" data-tab="dashboard">Dashboard</button>
       <button class="btn tab-btn" data-tab="commissions">Commissions</button>
       <button class="btn tab-btn owner-only-tab" data-tab="stats">Stats</button>
       <button class="btn tab-btn" data-tab="employees">Employees</button>
       <button class="btn tab-btn" data-tab="settings">Settings</button>
-      <span class="header-divider"></span>
-      <label class="event-toggle" title="Toggle Event Pricing">
-        <input type="checkbox" id="eventModeToggle" />
-        <span class="event-toggle-label">Event Mode</span>
-      </label>
-      <span class="header-divider"></span>
-      <span id="syncStatus" class="sync-status">Loading...</span>
-      <span class="header-divider"></span>
-      <button class="btn small" id="lockToggle">🔒 Locked</button>
     </div>
   </div>
 
@@ -58,12 +55,12 @@
           <table id="dashboardTable">
             <thead>
               <tr>
-                <th>Employee</th>
-                <th>Role</th>
-                <th>Services</th>
-                <th>Gross Sales</th>
-                <th>Commission</th>
-                <th>Net Sales</th>
+                <th class="sortable" data-sort="name">Employee <span class="sort-arrow"></span></th>
+                <th class="sortable" data-sort="role">Role <span class="sort-arrow"></span></th>
+                <th class="sortable" data-sort="services">Services <span class="sort-arrow"></span></th>
+                <th class="sortable" data-sort="sales">Gross Sales <span class="sort-arrow"></span></th>
+                <th class="sortable" data-sort="commission">Commission <span class="sort-arrow"></span></th>
+                <th class="sortable" data-sort="net">Net Sales <span class="sort-arrow"></span></th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -74,17 +71,19 @@
     </div>
   </div>
   <div id="commissionsTab" class="tab-content">
-    <div class="employee-picker" id="employeePicker"></div>
-
     <div id="commissionWorkArea" style="display:none;">
       <div id="compactSummary" class="compact-summary"></div>
 
       <div class="panel">
-        <div class="panel-header">
-          <div id="workEmployeeHeader" class="work-emp-header"></div>
+        <div class="panel-header emp-dropdown-wrap" id="empPanelHeader">
+          <div id="workEmployeeHeader" class="work-emp-header">
+            <span class="work-emp-name">Select Employee...</span>
+            <span class="emp-dropdown-arrow">&#9662;</span>
+          </div>
           <div class="panel-actions">
             <button class="btn danger small" id="clearEmployeeWork">Clear All</button>
           </div>
+          <div class="emp-dropdown-list" id="employeeDropdownList" style="display:none;"></div>
         </div>
 
         <div class="inventory-section">
@@ -106,7 +105,14 @@
 
     <div id="noEmployeeSelected" class="empty-state-large">
       <div class="empty-icon">👆</div>
-      <p>Select an employee above to start logging services</p>
+      <p class="empty-msg">Select an employee to start logging services</p>
+      <div class="emp-dropdown-wrap" style="margin-top:16px;">
+        <button class="emp-dropdown-btn" id="noEmpDropdownBtn">
+          <span>Select Employee...</span>
+          <span class="emp-dropdown-arrow">&#9662;</span>
+        </button>
+        <div class="emp-dropdown-list" id="noEmpDropdownList" style="display:none;"></div>
+      </div>
     </div>
   </div>
 
@@ -115,6 +121,7 @@
     <div class="crew-stats-bar">
       <h2 class="crew-stats-title">Crew Overview</h2>
       <div id="crewStats" class="crew-stats"></div>
+      <button class="btn primary small" id="weeklyPayoutBtn">Weekly Payout</button>
     </div>
     <div class="stats-charts-row">
       <div class="panel">
@@ -130,6 +137,12 @@
       <div class="panel crew-feed-panel">
         <div class="panel-header"><h2>Activity Feed</h2></div>
         <div id="activityFeed" class="activity-feed"></div>
+      </div>
+    </div>
+    <div class="crew-content-row">
+      <div class="panel">
+        <div class="panel-header"><h2>Payout History</h2></div>
+        <div id="payoutHistory" class="payout-history"></div>
       </div>
     </div>
   </div>
@@ -160,6 +173,21 @@
   <!-- ===================== SETTINGS ===================== -->
   <div id="settingsTab" class="tab-content">
     <div class="settings-grid">
+      <!-- General -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>General</h2>
+        </div>
+        <div class="control-group">
+          <label for="eventModeToggle">Event Mode</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="eventModeToggle" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="muted">Uses event pricing for services when enabled</span>
+        </div>
+      </div>
+
       <!-- Commission Rates -->
       <div class="panel">
         <div class="panel-header">
@@ -232,9 +260,6 @@
           <button class="btn" id="importJsonBtn">Import JSON</button>
           <input type="file" id="importJsonFile" accept=".json" style="display:none;" />
           <button class="btn danger" id="resetAllBtn">Reset All Data</button>
-        </div>
-        <div class="muted" style="margin-top:8px;">
-          All data is automatically saved to your browser's local storage.
         </div>
       </div>
     </div>

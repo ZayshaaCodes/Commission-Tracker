@@ -27,31 +27,46 @@ h3 { font-size: 14px; margin: 0 0 8px; color: #fff; font-weight: 600; }
 .header-logo {
   height: 70px;
   width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .app-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 10px;
   border-bottom: 2px solid #333;
-  flex-wrap: wrap;
+}
+
+.header-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.header-controls {
+.header-status {
   display: flex;
   gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
-.header-divider {
-  width: 1px;
-  height: 24px;
-  background: #444;
-  margin: 0 2px;
+.header-row-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.header-row-tabs .tab-btn {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
 }
 
 /* ===================== TABS ===================== */
@@ -208,38 +223,24 @@ th {
   min-width: 100px;
 }
 
-/* ===================== EVENT MODE ===================== */
-.event-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
+.control-group label.toggle-switch {
+  min-width: 40px;
 }
 
-.event-toggle-label {
-  font-size: 13px;
-  color: #a0a0a0;
-  transition: color 0.2s;
+/* ===================== SYNC DOT ===================== */
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #666;
+  display: inline-block;
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
 }
 
-.event-toggle input:checked + .event-toggle-label {
-  color: #fbbf24;
-  font-weight: 600;
-}
-
-.sync-status {
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #3a3a3a;
-  border: 1px solid #444;
-  color: #a0a0a0;
-}
-
-.sync-status.connected {
-  background: #1e5f2b;
-  border-color: #16a34a;
-  color: #86efac;
+.sync-dot.connected {
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74,222,128,0.4);
 }
 
 /* ===================== LOCK / READ-ONLY ===================== */
@@ -250,8 +251,7 @@ body.locked .log-delete,
 body.locked .ec-actions,
 body.locked .toggle-switch,
 body.locked .add-employee-form,
-body.locked #clearEmployeeWork,
-body.locked .event-toggle {
+body.locked #clearEmployeeWork {
   display: none !important;
 }
 
@@ -259,10 +259,6 @@ body.locked .counter-controls {
   pointer-events: none;
 }
 
-/* Employee: hide management controls only */
-body.access-employee .event-toggle {
-  display: none !important;
-}
 
 /* ===================== BADGES ===================== */
 .badge {

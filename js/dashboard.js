@@ -1,8 +1,10 @@
-import { $, money, esc } from './utils.js';
+import { $, money, esc, toGMT8 } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
          calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
-import { isUnlocked } from './auth.js';
+import { isUnlocked, getAccessLevel } from './auth.js';
 import { render } from './app.js';
+
+let dashSort = { key: 'sales', dir: -1 };
 
 export function renderDashboard() {
   const activeEmps = state.employees.filter(e => e.active);
@@ -40,17 +42,64 @@ export function renderDashboard() {
   const tbody = $('dashboardBody');
   tbody.innerHTML = '';
 
-  const sorted = [...state.employees].sort((a, b) => {
-    if (a.active !== b.active) return a.active ? -1 : 1;
-    return calcEmployeeSales(b.id) - calcEmployeeSales(a.id);
+  // Build data for sorting
+  const roleIndex = {};
+  state.roles.forEach((r, i) => { roleIndex[r.id] = i; });
+
+  const empData = state.employees.map(emp => {
+    const role = getRole(emp.roleId);
+    return {
+      emp,
+      role,
+      name: emp.name.toLowerCase(),
+      roleRank: roleIndex[emp.roleId] ?? 999,
+      sales: calcEmployeeSales(emp.id),
+      commission: calcEmployeeCommission(emp.id),
+      services: calcEmployeeServiceCount(emp.id),
+      net: calcEmployeeSales(emp.id) - calcEmployeeCommission(emp.id)
+    };
   });
 
-  for (const emp of sorted) {
-    const role = getRole(emp.roleId);
-    const sales = calcEmployeeSales(emp.id);
-    const comm = calcEmployeeCommission(emp.id);
-    const net = sales - comm;
-    const svcCount = calcEmployeeServiceCount(emp.id);
+  empData.sort((a, b) => {
+    if (a.emp.active !== b.emp.active) return a.emp.active ? -1 : 1;
+    const dir = dashSort.dir;
+    switch (dashSort.key) {
+      case 'name': return dir * a.name.localeCompare(b.name);
+      case 'role': return dir * (a.roleRank - b.roleRank);
+      case 'services': return dir * (a.services - b.services);
+      case 'sales': return dir * (a.sales - b.sales);
+      case 'commission': return dir * (a.commission - b.commission);
+      case 'net': return dir * (a.net - b.net);
+      default: return dir * (a.sales - b.sales);
+    }
+  });
+
+  // Update sort arrows
+  document.querySelectorAll('#dashboardTable th.sortable').forEach(th => {
+    const arrow = th.querySelector('.sort-arrow');
+    if (th.dataset.sort === dashSort.key) {
+      arrow.textContent = dashSort.dir === 1 ? ' ▲' : ' ▼';
+      th.classList.add('sorted');
+    } else {
+      arrow.textContent = '';
+      th.classList.remove('sorted');
+    }
+  });
+
+  if (empData.length === 0) {
+    const hint = getAccessLevel() === 'owner'
+      ? 'No employees yet — add some in the Employees tab to get started'
+      : 'No employees have been added yet';
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px 20px;color:#888;">${hint}</td></tr>`;
+  }
+
+  for (const d of empData) {
+    const emp = d.emp;
+    const role = d.role;
+    const sales = d.sales;
+    const comm = d.commission;
+    const net = d.net;
+    const svcCount = d.services;
 
     // Build tooltip with service breakdown
     const work = getEmployeeWork(emp.id);
@@ -116,6 +165,20 @@ export function renderDashboard() {
     tip.style.top = (e.pageY + 16) + 'px';
   };
   tbody.onmouseleave = () => { tip.style.display = 'none'; };
+
+  // Column header sort
+  document.querySelectorAll('#dashboardTable th.sortable').forEach(th => {
+    th.onclick = () => {
+      const key = th.dataset.sort;
+      if (dashSort.key === key) {
+        dashSort.dir *= -1;
+      } else {
+        dashSort.key = key;
+        dashSort.dir = key === 'name' || key === 'role' ? 1 : -1;
+      }
+      renderDashboard();
+    };
+  });
 }
 
 // --- ACTIVITY TIMELINE ---
@@ -139,7 +202,8 @@ export function renderTimeline() {
     return;
   }
 
-  const now = new Date();
+  // Use GMT-8 (PST) for consistent day boundaries across time zones
+  const now = toGMT8(new Date());
   const days = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(now);
@@ -157,8 +221,9 @@ export function renderTimeline() {
   }
 
   for (const entry of allEntries) {
+    const entryGMT8 = toGMT8(entry.timestamp).getTime();
     for (const day of days) {
-      if (entry.timestamp >= day.start && entry.timestamp < day.end) {
+      if (entryGMT8 >= day.start && entryGMT8 < day.end) {
         day.revenue += getServicePrice(entry.serviceId);
         day.count++;
       }

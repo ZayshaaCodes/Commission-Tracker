@@ -21,9 +21,10 @@ export function scheduleSync() {
 }
 
 export function updateSyncBadge(text, ok) {
-  const el = $('syncStatus');
-  el.textContent = text;
-  el.className = 'sync-status' + (ok ? ' connected' : '');
+  const el = $('syncDot');
+  if (!el) return;
+  el.title = text;
+  el.className = 'sync-dot' + (ok ? ' connected' : '');
 }
 
 // === LOAD ===

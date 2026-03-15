@@ -75,6 +75,8 @@ if (!state.work) state.work = {};
 for (const emp of state.employees) {
   if (!emp.joinDate) emp.joinDate = Date.now();
 }
+if (!Array.isArray(state.activityLog)) state.activityLog = [];
+if (!Array.isArray(state.payoutHistory)) state.payoutHistory = [];
 delete state.sheetsConfig;
 
 // === SAVE ===
