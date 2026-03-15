@@ -53,7 +53,7 @@
 }
 
 .emp-dropdown-arrow {
-  font-size: 12px;
+  font-size: 18px;
   color: #888;
   margin-left: 8px;
 }
@@ -125,7 +125,8 @@
 .commission-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 2fr 1fr;
+  align-items: start;
 }
 
 @media (max-width: 900px) {
@@ -269,6 +270,8 @@
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
+  flex: 1 1 0;
+  justify-content: center;
 }
 
 .service-btn:hover {

@@ -58,11 +58,24 @@ export function renderCommissions() {
   document.removeEventListener('click', closeDropdown);
   document.addEventListener('click', closeDropdown);
 
+  // Locked viewers always see the lock screen
+  if (getAccessLevel() === 'viewer') {
+    $('commissionWorkArea').style.display = 'none';
+    $('noEmployeeSelected').style.display = '';
+    const emptyIcon = $('noEmployeeSelected').querySelector('.empty-icon');
+    const emptyMsg = $('noEmployeeSelected').querySelector('.empty-msg');
+    const emptyDropWrap = $('noEmployeeSelected').querySelector('.emp-dropdown-wrap');
+    emptyIcon.textContent = '🔒';
+    emptyMsg.textContent = 'Unlock to start logging services';
+    emptyDropWrap.style.display = 'none';
+    return;
+  }
+
   if (!state.selectedEmployeeId || !activeEmps.find(e => e.id === state.selectedEmployeeId)) {
     $('commissionWorkArea').style.display = 'none';
     $('noEmployeeSelected').style.display = '';
 
-    // Adapt empty state message based on whether employees exist
+    // Adapt empty state message based on context
     const emptyIcon = $('noEmployeeSelected').querySelector('.empty-icon');
     const emptyMsg = $('noEmployeeSelected').querySelector('.empty-msg');
     const emptyDropWrap = $('noEmployeeSelected').querySelector('.emp-dropdown-wrap');

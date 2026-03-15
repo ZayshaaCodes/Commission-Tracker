@@ -1,4 +1,10 @@
 /* ===================== DASHBOARD ===================== */
+.dash-emp-link {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.dash-emp-link:hover { color: #93c5fd; }
+
 .metrics-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

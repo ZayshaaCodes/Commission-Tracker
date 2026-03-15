@@ -74,32 +74,34 @@
     <div id="commissionWorkArea" style="display:none;">
       <div id="compactSummary" class="compact-summary"></div>
 
-      <div class="panel">
-        <div class="panel-header emp-dropdown-wrap" id="empPanelHeader">
-          <div id="workEmployeeHeader" class="work-emp-header">
-            <span class="work-emp-name">Select Employee...</span>
-            <span class="emp-dropdown-arrow">&#9662;</span>
+      <div class="commission-grid">
+        <div class="panel">
+          <div class="panel-header emp-dropdown-wrap" id="empPanelHeader">
+            <div id="workEmployeeHeader" class="work-emp-header">
+              <span class="work-emp-name">Select Employee...</span>
+              <span class="emp-dropdown-arrow">&#9662;</span>
+            </div>
+            <div class="panel-actions">
+              <button class="btn danger small" id="clearEmployeeWork">Clear All</button>
+            </div>
+            <div class="emp-dropdown-list" id="employeeDropdownList" style="display:none;"></div>
           </div>
-          <div class="panel-actions">
-            <button class="btn danger small" id="clearEmployeeWork">Clear All</button>
+
+          <div class="inventory-section">
+            <h3>Inventory Items</h3>
+            <div id="inventoryCounters" class="counter-grid"></div>
           </div>
-          <div class="emp-dropdown-list" id="employeeDropdownList" style="display:none;"></div>
+
+          <div class="services-section">
+            <h3>Log Service</h3>
+            <div id="serviceButtons" class="service-buttons"></div>
+          </div>
         </div>
 
-        <div class="inventory-section">
-          <h3>Inventory Items</h3>
-          <div id="inventoryCounters" class="counter-grid"></div>
+        <div class="panel">
+          <div class="panel-header"><h2>Service Log</h2></div>
+          <div id="serviceLog" class="service-log"></div>
         </div>
-
-        <div class="services-section">
-          <h3>Log Service</h3>
-          <div id="serviceButtons" class="service-buttons"></div>
-        </div>
-      </div>
-
-      <div class="panel" style="margin-top:12px;">
-        <div class="panel-header"><h2>Service Log</h2></div>
-        <div id="serviceLog" class="service-log"></div>
       </div>
     </div>
 

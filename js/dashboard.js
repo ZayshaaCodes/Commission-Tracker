@@ -1,4 +1,4 @@
-import { $, money, esc, toGMT8 } from './utils.js';
+import { $, money, esc, toGMT8, timeAgo } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
          calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
 import { isUnlocked, getAccessLevel } from './auth.js';
@@ -103,30 +103,52 @@ export function renderDashboard() {
 
     // Build tooltip with service breakdown
     const work = getEmployeeWork(emp.id);
-    const tipLines = [];
-    for (const [svcId, qty] of Object.entries(work.inventory)) {
-      if (qty <= 0) continue;
-      const svc = getService(svcId);
-      if (svc) tipLines.push(`${svc.name} x${qty} — ${money(getServicePrice(svcId) * qty)}`);
-    }
-    const svcCounts = {};
-    for (const entry of work.entries) {
-      const svc = getService(entry.serviceId);
-      if (!svc) continue;
-      svcCounts[entry.serviceId] = (svcCounts[entry.serviceId] || { name: svc.name, count: 0, total: 0 });
-      svcCounts[entry.serviceId].count++;
-      svcCounts[entry.serviceId].total += getServicePrice(entry.serviceId);
-    }
-    for (const s of Object.values(svcCounts)) {
-      tipLines.push(`${s.name} x${s.count} — ${money(s.total)}`);
+    const showTime = isUnlocked();
+    let tipHtml = '';
+
+    if (showTime) {
+      // Show individual entries with time ago
+      const allItems = [];
+      for (const [svcId, qty] of Object.entries(work.inventory)) {
+        if (qty <= 0) continue;
+        const svc = getService(svcId);
+        if (svc) allItems.push({ text: `${svc.name} x${qty} — ${money(getServicePrice(svcId) * qty)}`, time: null });
+      }
+      for (const entry of work.entries) {
+        const svc = getService(entry.serviceId);
+        if (!svc) continue;
+        allItems.push({ text: `${svc.name} — ${money(getServicePrice(entry.serviceId))}`, time: entry.timestamp });
+      }
+      allItems.sort((a, b) => (b.time || 0) - (a.time || 0));
+      tipHtml = allItems.map(i => `<div>${esc(i.text)}${i.time ? ` <span class="muted">${timeAgo(i.time)}</span>` : ''}</div>`).join('');
+    } else {
+      // Grouped summary for viewers
+      const tipLines = [];
+      for (const [svcId, qty] of Object.entries(work.inventory)) {
+        if (qty <= 0) continue;
+        const svc = getService(svcId);
+        if (svc) tipLines.push(`${svc.name} x${qty} — ${money(getServicePrice(svcId) * qty)}`);
+      }
+      const svcCounts = {};
+      for (const entry of work.entries) {
+        const svc = getService(entry.serviceId);
+        if (!svc) continue;
+        svcCounts[entry.serviceId] = (svcCounts[entry.serviceId] || { name: svc.name, count: 0, total: 0 });
+        svcCounts[entry.serviceId].count++;
+        svcCounts[entry.serviceId].total += getServicePrice(entry.serviceId);
+      }
+      for (const s of Object.values(svcCounts)) {
+        tipLines.push(`${s.name} x${s.count} — ${money(s.total)}`);
+      }
+      tipHtml = tipLines.map(l => `<div>${esc(l)}</div>`).join('');
     }
 
     const tr = document.createElement('tr');
     if (!emp.active) tr.style.opacity = '0.4';
-    tr.dataset.tipHtml = tipLines.map(l => `<div>${esc(l)}</div>`).join('') || '<div class="muted">No services logged</div>';
+    tr.dataset.tipHtml = tipHtml || '<div class="muted">No services logged</div>';
     const canActivate = !emp.active && isUnlocked();
     tr.innerHTML = `
-      <td style="font-weight:600;">${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></td>
+      <td style="font-weight:600;">${emp.active ? `<span class="dash-emp-link" data-emp-id="${emp.id}">` : '<span>'}${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></span></td>
       <td><span class="role-badge" style="background:${role ? role.color : '#666'}22;color:${role ? role.color : '#888'};border-color:${role ? role.color : '#666'};">${esc(role ? role.name : 'Unknown')}</span></td>
       <td>${svcCount}</td>
       <td class="text-green">${money(sales)}</td>
@@ -140,14 +162,19 @@ export function renderDashboard() {
     tbody.appendChild(tr);
   }
 
-  // Activate button handler
+  // Activate button handler + name click
   tbody.onclick = (e) => {
     const btn = e.target.closest('[data-activate]');
-    if (!btn) return;
-    const emp = state.employees.find(em => em.id === btn.dataset.activate);
-    if (emp) {
-      emp.active = true;
-      render();
+    if (btn) {
+      const emp = state.employees.find(em => em.id === btn.dataset.activate);
+      if (emp) { emp.active = true; render(); }
+      return;
+    }
+    const link = e.target.closest('[data-emp-id]');
+    if (link) {
+      state.selectedEmployeeId = link.dataset.empId;
+      saveState();
+      document.querySelector('[data-tab="commissions"]')?.click();
     }
   };
 
