@@ -4,6 +4,19 @@
   const money = (n) => '$' + (Math.round((n + Number.EPSILON) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0 });
   const uid = () => crypto.randomUUID();
 
+  function timeAgo(ts) {
+    const seconds = Math.floor((Date.now() - ts) / 1000);
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return minutes + 'm ago';
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return hours + 'h ago';
+    const days = Math.floor(hours / 24);
+    if (days < 30) return days + 'd ago';
+    const months = Math.floor(days / 30);
+    return months + 'mo ago';
+  }
+
   // === DEFAULT DATA ===
   const DEFAULT_ROLES = [
     { id: 'owner', name: 'Owner', commission: 0, color: '#22c55e' },
@@ -20,8 +33,7 @@
     { id: 'repair_kit', name: 'Repair Kit', price: 100, eventPrice: 50, category: 'inventory' },
     { id: 'adv_repair_kit', name: 'Adv. Repair Kit', price: 250, eventPrice: 125, category: 'inventory' },
     { id: 'body_repair', name: 'Body Repair', price: 50, eventPrice: 25, category: 'service' },
-    { id: 'gov_internals', name: 'Gov Internals', price: 0, eventPrice: 0, category: 'service' },
-    { id: 'gov_hg_internals', name: 'Gov HG Internals', price: 0, eventPrice: 0, category: 'service' },
+
     { id: 'city_tow', name: 'City Tow', price: 700, eventPrice: 350, category: 'service' },
     { id: 'county_tow', name: 'County Tow', price: 900, eventPrice: 450, category: 'service' },
     { id: 'internals', name: 'Internals', price: 500, eventPrice: 350, category: 'service' },
@@ -374,23 +386,6 @@
     return count;
   }
 
-  function calcGovTotal(empId) {
-    const work = getEmployeeWork(empId);
-    let count = 0;
-    for (const entry of work.entries) {
-      if (entry.serviceId === 'gov_internals') count++;
-    }
-    return count;
-  }
-
-  function calcHgGovTotal(empId) {
-    const work = getEmployeeWork(empId);
-    let count = 0;
-    for (const entry of work.entries) {
-      if (entry.serviceId === 'gov_hg_internals') count++;
-    }
-    return count;
-  }
 
   // === TAB SWITCHING ===
   let currentTab = 'dashboard';
@@ -424,14 +419,10 @@
 
     let totalSales = 0;
     let totalCommissions = 0;
-    let govTotal = 0;
-    let hgGovTotal = 0;
 
     for (const emp of activeEmps) {
       totalSales += calcEmployeeSales(emp.id);
       totalCommissions += calcEmployeeCommission(emp.id);
-      govTotal += calcGovTotal(emp.id);
-      hgGovTotal += calcHgGovTotal(emp.id);
     }
 
     const netRevenue = totalSales - totalCommissions;
@@ -453,21 +444,7 @@
         <div class="metric-value blue">${money(netRevenue)}</div>
         <div class="metric-accent" style="background:#60a5fa;"></div>
       </div>
-      <div class="metric-card">
-        <div class="metric-label">Active Employees</div>
-        <div class="metric-value">${activeEmps.length}</div>
-        <div class="metric-accent" style="background:#a78bfa;"></div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Gov Internals</div>
-        <div class="metric-value">${govTotal}</div>
-        <div class="metric-accent" style="background:#f97316;"></div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">HG Gov Internals</div>
-        <div class="metric-value">${hgGovTotal}</div>
-        <div class="metric-accent" style="background:#ec4899;"></div>
-      </div>
+
     `;
 
     // Charts (owner only)
@@ -819,30 +796,49 @@
     const svcBtnsEl = $('serviceButtons');
     svcBtnsEl.innerHTML = '';
 
-    // Color mapping by price tier
-    const getServiceColor = (price) => {
-      if (price === 0) return '#6b7280';
-      if (price <= 100) return '#16a34a';
-      if (price <= 1000) return '#2563eb';
-      if (price <= 5000) return '#7c3aed';
-      return '#dc2626';
-    };
+    // Group services by functional category
+    const groups = [
+      { label: 'Government', color: '#6b7280', test: p => p === 0 },
+      { label: 'Services',   color: '#3b82f6', test: p => p > 0 && p <= 1000 },
+      { label: 'Upgrades',   color: '#a855f7', test: p => p > 1000 && p <= 5000 },
+      { label: 'Packages',   color: '#f59e0b', test: p => p > 5000 }
+    ];
 
-    for (const svc of logServices) {
-      const price = getServicePrice(svc.id);
-      const color = getServiceColor(svc.price);
-      const btn = document.createElement('button');
-      btn.className = 'service-btn';
-      btn.style.borderColor = color;
-      btn.style.backgroundColor = color + '22';
-      btn.innerHTML = `<span class="svc-name">${esc(svc.name)}</span><span class="svc-price">${money(price)}</span>`;
-      btn.onclick = () => {
-        const w = getEmployeeWork(state.selectedEmployeeId);
-        w.entries.push({ id: uid(), serviceId: svc.id, timestamp: Date.now() });
-        renderCommissions();
-        saveState();
-      };
-      svcBtnsEl.appendChild(btn);
+    for (const group of groups) {
+      const groupSvcs = logServices.filter(s => group.test(s.price));
+      if (groupSvcs.length === 0) continue;
+
+      const row = document.createElement('div');
+      row.className = 'svc-row';
+
+      const label = document.createElement('div');
+      label.className = 'svc-row-label';
+      label.style.borderLeftColor = group.color;
+      label.style.color = group.color;
+      label.textContent = group.label;
+      row.appendChild(label);
+
+      const wrap = document.createElement('div');
+      wrap.className = 'svc-row-btns';
+
+      for (const svc of groupSvcs) {
+        const price = getServicePrice(svc.id);
+        const btn = document.createElement('button');
+        btn.className = 'service-btn';
+        btn.style.borderColor = group.color + '55';
+        btn.style.backgroundColor = group.color + '12';
+        btn.innerHTML = `<span class="svc-name">${esc(svc.name)}</span><span class="svc-price">${money(price)}</span>`;
+        btn.onclick = () => {
+          const w = getEmployeeWork(state.selectedEmployeeId);
+          w.entries.push({ id: uid(), serviceId: svc.id, timestamp: Date.now() });
+          renderCommissions();
+          saveState();
+        };
+        wrap.appendChild(btn);
+      }
+
+      row.appendChild(wrap);
+      svcBtnsEl.appendChild(row);
     }
 
     // Summary
@@ -901,7 +897,8 @@
           type: 'entry',
           name: svc.name,
           total: getServicePrice(entry.serviceId),
-          entryId: entry.id
+          entryId: entry.id,
+          timestamp: entry.timestamp
         });
       }
     }
@@ -914,6 +911,7 @@
         div.className = 'log-entry';
         div.innerHTML = `
           <span class="log-name">${esc(item.name)}</span>
+          ${item.timestamp ? `<span class="log-time">${timeAgo(item.timestamp)}</span>` : ''}
           <span class="log-price">${money(item.total)}</span>
           ${item.type === 'entry' ? `<button class="log-delete" data-entry-id="${item.entryId}" title="Remove">&times;</button>` : ''}
         `;
