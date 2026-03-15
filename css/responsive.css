@@ -1,0 +1,113 @@
+/* ===================== RESPONSIVE ===================== */
+
+/* --- Phone (≤ 600px) --- */
+@media (max-width: 600px) {
+  body { margin: 0; padding: 6px; }
+  h1 { font-size: 16px; }
+
+  .crew-stats-bar { flex-wrap: wrap; }
+  .crew-stats { flex-wrap: wrap; }
+
+  .app-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding-bottom: 8px;
+  }
+
+  .header-controls {
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .tab-btn { padding: 7px 10px; font-size: 13px; }
+  .header-divider { display: none; }
+
+  .metrics-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .metric-card { padding: 10px; }
+  .metric-card .metric-value { font-size: 18px; }
+
+  .dashboard-charts-row, .stats-charts-row { grid-template-columns: 1fr; }
+
+  .timeline-chart { min-height: 80px; }
+
+  .employee-picker {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+  }
+
+  .emp-pill { flex-shrink: 0; font-size: 12px; padding: 6px 10px; }
+
+  .compact-summary { gap: 6px; }
+  .compact-stat { padding: 8px 6px; }
+  .compact-stat .cs-value { font-size: 15px; }
+  .compact-stat .cs-label { font-size: 9px; }
+
+  .counter-grid { grid-template-columns: 1fr; }
+
+  .service-buttons { gap: 6px; }
+  .svc-row { flex-direction: column; gap: 4px; }
+  .svc-row-label { width: auto; padding-top: 0; }
+
+  .emp-row {
+    flex-wrap: wrap;
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .emp-row-left { flex-basis: 100%; }
+  .emp-row-stats { flex-basis: 100%; justify-content: space-between; }
+  .emp-row-actions { flex-basis: 100%; }
+
+  .settings-grid { grid-template-columns: 1fr; }
+
+  .add-employee-form {
+    flex-direction: column;
+  }
+
+  .add-employee-form input,
+  .add-employee-form select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  th, td { padding: 8px 6px; font-size: 13px; }
+
+  .modal {
+    min-width: 0;
+    width: calc(100vw - 24px);
+    max-width: 400px;
+  }
+
+  .sb-name { min-width: 60px; max-width: 70px; font-size: 12px; }
+  .sb-amount { min-width: 55px; font-size: 12px; }
+
+  .commission-grid { grid-template-columns: 1fr; }
+}
+
+/* --- Tablet (601 – 1024px) --- */
+@media (min-width: 601px) and (max-width: 1024px) {
+  body { padding: 0 16px; }
+
+  .metrics-row { grid-template-columns: repeat(3, 1fr); }
+
+  .dashboard-charts-row, .stats-charts-row { grid-template-columns: 1fr 1fr; }
+
+  /* employee list already works at this width */
+
+  .settings-grid { grid-template-columns: 1fr; }
+
+  .commission-grid { grid-template-columns: 1fr; }
+}
+
+/* --- Wide Desktop (>1400px) --- */
+@media (min-width: 1400px) {
+  .metrics-row { grid-template-columns: repeat(6, 1fr); }
+}

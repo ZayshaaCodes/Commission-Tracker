@@ -44,8 +44,8 @@ export function renderEmployees() {
           <input type="checkbox" ${emp.active ? 'checked' : ''} data-emp-toggle="${emp.id}" />
           <span class="toggle-slider"></span>
         </label>
-        <span class="role-badge" style="background:${role ? role.color : '#666'}22;color:${role ? role.color : '#888'};border-color:${role ? role.color : '#666'};">${esc(role ? role.name : 'Unknown')}</span>
         <span class="emp-row-name">${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></span>
+        <span class="role-badge" style="background:${role ? role.color : '#666'}22;color:${role ? role.color : '#888'};border-color:${role ? role.color : '#666'};">${esc(role ? role.name : 'Unknown')}</span>
       </div>
       <div class="emp-row-stats">
         <span class="emp-row-stat"><span class="text-green">${money(sales)}</span></span>

@@ -311,17 +311,6 @@ body.access-employee .event-toggle {
   margin-top: 8px;
 }
 
-.dashboard-bottom-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-@media (max-width: 700px) {
-  .dashboard-bottom-row { grid-template-columns: 1fr; }
-}
-
 .stat-row {
   display: flex;
   justify-content: space-between;
@@ -358,6 +347,25 @@ body.access-employee .event-toggle {
 }
 
 /* ===================== COMMISSIONS TAB ===================== */
+.work-emp-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.work-emp-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+
+.work-emp-id {
+  font-size: 14px;
+  font-weight: 500;
+  color: #888;
+}
+
 .employee-picker {
   display: flex;
   gap: 8px;
@@ -951,48 +959,35 @@ body.access-employee .event-toggle {
 
 /* ===================== DASHBOARD MAIN ROW ===================== */
 .dashboard-main-row {
-  display: flex;
-  gap: 12px;
   margin-top: 12px;
-  align-items: flex-start;
-}
-
-.dashboard-table-col {
-  flex: 1;
-  min-width: 0;
-}
-
-.dashboard-feed-col {
-  width: 25%;
-  flex-shrink: 0;
-  max-height: 480px;
-  overflow-y: auto;
-}
-
-@media (max-width: 1024px) {
-  .dashboard-main-row {
-    flex-direction: column;
-  }
-  .dashboard-feed-col {
-    width: 100%;
-    max-height: 300px;
-  }
 }
 
 /* ===================== DASHBOARD CHARTS ===================== */
-.dashboard-charts-row {
+.dashboard-charts-row, .stats-charts-row {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
   gap: 12px;
   margin: 12px 0;
 }
 
+.stats-charts-row > .panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-charts-row > .panel > div:last-child {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 /* --- Activity Timeline --- */
 .timeline-chart {
   display: flex;
   gap: 4px;
-  height: 160px;
-  padding: 8px 4px 0;
+  flex: 1;
+  min-height: 120px;
+  padding: 0 4px;
 }
 
 .tl-col {
@@ -1080,93 +1075,45 @@ body.access-employee .event-toggle {
 }
 
 /* ===================== CREW TAB ===================== */
-.crew-top-row {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 12px;
+.crew-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background-color: #2d2d2d;
+  border: 1px solid #333;
+  border-radius: 8px;
+}
+
+.crew-stats-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #aaa;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.crew-content-row {
   margin-bottom: 12px;
 }
 
 .crew-stats {
   display: flex;
-  gap: 16px;
+  gap: 24px;
 }
 
 .crew-stat {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 70px;
-}
-
-.crew-stat-val { font-size: 22px; font-weight: 700; }
-.crew-stat-lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
-
-.crew-roster {
-  display: flex;
-  flex-direction: column;
+  align-items: baseline;
   gap: 6px;
+  white-space: nowrap;
 }
 
-.crew-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 14px;
-  background: #2a2a2a;
-  border: 1px solid #3a3a3a;
-  border-radius: 8px;
-  transition: background 0.15s;
-}
-.crew-card:hover { background: #333; }
-.crew-card.inactive { opacity: 0.45; }
+.crew-stat-val { font-size: 18px; font-weight: 700; }
+.crew-stat-lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; }
 
-.crew-card-top { display: flex; align-items: center; justify-content: space-between; }
 
-.crew-card-identity {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.crew-card-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.crew-card-name { font-size: 15px; font-weight: 700; color: #fff; }
-.crew-card-id { font-size: 12px; color: #777; }
-
-.crew-stale-badge {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  color: #fbbf24;
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.crew-gone-badge {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  color: #888;
-  background: rgba(136, 136, 136, 0.12);
-  border: 1px solid rgba(136, 136, 136, 0.3);
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.crew-card-stats {
-  display: flex;
-  gap: 20px;
-  padding-left: 18px;
-}
-
-.crew-card-stat { display: flex; flex-direction: column; }
-.crew-card-stat-val { font-size: 13px; font-weight: 600; color: #ddd; }
-.crew-card-stat-lbl { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.3px; }
 
 .af-item {
   display: flex;
@@ -1309,9 +1256,8 @@ tbody tr:hover { background-color: rgba(255,255,255,0.04); }
   body { margin: 0; padding: 6px; }
   h1 { font-size: 16px; }
 
-  .crew-top-row { grid-template-columns: 1fr; }
+  .crew-stats-bar { flex-wrap: wrap; }
   .crew-stats { flex-wrap: wrap; }
-  .crew-card-stats { flex-wrap: wrap; gap: 10px; }
 
   .app-header {
     flex-direction: column;
@@ -1336,9 +1282,9 @@ tbody tr:hover { background-color: rgba(255,255,255,0.04); }
   .metric-card { padding: 10px; }
   .metric-card .metric-value { font-size: 18px; }
 
-  .dashboard-charts-row { grid-template-columns: 1fr; }
+  .dashboard-charts-row, .stats-charts-row { grid-template-columns: 1fr; }
 
-  .timeline-chart { height: 120px; }
+  .timeline-chart { min-height: 80px; }
 
   .employee-picker {
     overflow-x: auto;
@@ -1403,7 +1349,7 @@ tbody tr:hover { background-color: rgba(255,255,255,0.04); }
 
   .metrics-row { grid-template-columns: repeat(3, 1fr); }
 
-  .dashboard-charts-row { grid-template-columns: 1fr 1fr; }
+  .dashboard-charts-row, .stats-charts-row { grid-template-columns: 1fr 1fr; }
 
   /* employee list already works at this width */
 

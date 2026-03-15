@@ -10,14 +10,15 @@ import { renderDashboard } from './dashboard.js';
 import { renderCommissions } from './commissions.js';
 import { renderEmployees } from './employees.js';
 import { renderSettings } from './settings.js';
-import { renderCrew, setCrewFilter } from './crew.js';
+import { renderCrew } from './crew.js';
 import { exportCsv, exportJson, importJson } from './data.js';
 
 // === TAB SWITCHING ===
-let currentTab = 'dashboard';
+let currentTab = sessionStorage.getItem('currentTab') || 'dashboard';
 
 function switchTab(tab) {
   currentTab = tab;
+  sessionStorage.setItem('currentTab', tab);
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
   const tabEl = $(tab + 'Tab');
@@ -33,7 +34,7 @@ export function render() {
   switch (currentTab) {
     case 'dashboard': renderDashboard(); break;
     case 'commissions': renderCommissions(); break;
-    case 'crew': renderCrew(); break;
+    case 'stats': renderCrew(); break;
     case 'employees': renderEmployees(); break;
     case 'settings': renderSettings(); break;
   }
@@ -62,7 +63,7 @@ function applyLockState() {
   if (employeesTab) employeesTab.style.display = level === 'owner' ? '' : 'none';
   if (crewTab) crewTab.style.display = level === 'owner' ? '' : 'none';
 
-  if (level !== 'owner' && (currentTab === 'settings' || currentTab === 'employees' || currentTab === 'crew')) {
+  if (level !== 'owner' && (currentTab === 'settings' || currentTab === 'employees' || currentTab === 'stats')) {
     switchTab('dashboard');
   }
 }
@@ -118,19 +119,6 @@ async function init() {
       renderEmployees();
     });
   });
-
-  // Crew filter buttons
-  const crewFilterBtns = { Active: $('crewFilterActive'), Inactive: $('crewFilterInactive'), All: $('crewFilterAll') };
-  for (const [key, btn] of Object.entries(crewFilterBtns)) {
-    if (!btn) continue;
-    btn.onclick = () => {
-      setCrewFilter(key.toLowerCase());
-      Object.values(crewFilterBtns).forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderCrew();
-    };
-  }
-  if (crewFilterBtns.Active) crewFilterBtns.Active.classList.add('active');
 
   // Clear employee work
   $('clearEmployeeWork').onclick = () => {
@@ -225,7 +213,7 @@ async function init() {
   } catch { /* continue with local data */ }
   markInitialLoadDone();
   fromRemote = true;
-  render();
+  switchTab(currentTab);
   fromRemote = false;
 
   // Hide loading overlay

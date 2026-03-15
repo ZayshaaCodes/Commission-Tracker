@@ -105,6 +105,7 @@ export function getEmployeeWork(empId) {
   const w = state.work[empId];
   if (!w.inventory || typeof w.inventory !== 'object') w.inventory = {};
   if (!Array.isArray(w.entries)) w.entries = [];
+  if (!Array.isArray(w.inventoryLog)) w.inventoryLog = [];
   return w;
 }
 

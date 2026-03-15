@@ -1,11 +1,7 @@
 import { $, money, esc, timeAgo } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
-         calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount } from './state.js';
-
-let crewFilter = 'active';
-
-export function setCrewFilter(f) { crewFilter = f; }
-export function getCrewFilter() { return crewFilter; }
+         calcEmployeeSales, calcEmployeeCommission } from './state.js';
+import { renderTimeline, renderSalesChart } from './dashboard.js';
 
 export function renderCrew() {
   // --- Crew Stats ---
@@ -22,13 +18,18 @@ export function renderCrew() {
   const statsEl = $('crewStats');
   if (statsEl) {
     statsEl.innerHTML = `
-      <div class="crew-stat"><span class="crew-stat-val">${active}</span><span class="crew-stat-lbl">Active</span></div>
-      <div class="crew-stat"><span class="crew-stat-val">${inactive}</span><span class="crew-stat-lbl">Inactive</span></div>
-      <div class="crew-stat"><span class="crew-stat-val text-green">${money(totalSales)}</span><span class="crew-stat-lbl">Gross Sales</span></div>
-      <div class="crew-stat"><span class="crew-stat-val text-amber">${money(totalCommission)}</span><span class="crew-stat-lbl">Commission</span></div>
-      <div class="crew-stat"><span class="crew-stat-val text-blue">${money(totalSales - totalCommission)}</span><span class="crew-stat-lbl">Net</span></div>
+      <div class="crew-stat"><span class="crew-stat-lbl">Active</span><span class="crew-stat-val">${active}</span></div>
+      <div class="crew-stat"><span class="crew-stat-lbl">Inactive</span><span class="crew-stat-val">${inactive}</span></div>
+      <div class="crew-stat"><span class="crew-stat-lbl">Gross Sales</span><span class="crew-stat-val text-green">${money(totalSales)}</span></div>
+      <div class="crew-stat"><span class="crew-stat-lbl">Commission</span><span class="crew-stat-val text-amber">${money(totalCommission)}</span></div>
+      <div class="crew-stat"><span class="crew-stat-lbl">Net</span><span class="crew-stat-val text-blue">${money(totalSales - totalCommission)}</span></div>
     `;
   }
+
+  // --- Charts ---
+  const activeEmps = state.employees.filter(e => e.active);
+  renderTimeline();
+  renderSalesChart(activeEmps);
 
   // --- Activity Feed ---
   const feedEl = $('activityFeed');
@@ -45,6 +46,16 @@ export function renderCrew() {
           action: svc ? svc.name : 'Unknown',
           price: getServicePrice(entry.serviceId),
           timestamp: entry.timestamp
+        });
+      }
+      for (const log of work.inventoryLog) {
+        const svc = getService(log.serviceId);
+        allEntries.push({
+          empName: emp.name,
+          color: role ? role.color : '#666',
+          action: svc ? `${svc.name} x${log.quantity}` : 'Unknown',
+          price: getServicePrice(log.serviceId) * log.quantity,
+          timestamp: log.timestamp
         });
       }
     }
@@ -66,48 +77,4 @@ export function renderCrew() {
     }
   }
 
-  // --- Roster ---
-  const rosterEl = $('crewRoster');
-  if (!rosterEl) return;
-
-  let filtered = state.employees;
-  if (crewFilter === 'active') filtered = filtered.filter(e => e.active);
-  else if (crewFilter === 'inactive') filtered = filtered.filter(e => !e.active);
-
-  if (filtered.length === 0) {
-    rosterEl.innerHTML = '<div style="color:#666;padding:12px;text-align:center;">No employees found</div>';
-    return;
-  }
-
-  rosterEl.innerHTML = filtered.map(emp => {
-    const role = getRole(emp.roleId);
-    const sales = calcEmployeeSales(emp.id);
-    const commission = calcEmployeeCommission(emp.id);
-    const svcCount = calcEmployeeServiceCount(emp.id);
-    const color = role ? role.color : '#666';
-
-    let badge = '';
-    if (!emp.active) {
-      badge = '<span class="crew-gone-badge">Inactive</span>';
-    }
-
-    return `
-      <div class="crew-card${emp.active ? '' : ' inactive'}">
-        <div class="crew-card-top">
-          <div class="crew-card-identity">
-            <span class="crew-card-dot" style="background:${color}"></span>
-            <span class="crew-card-name">${esc(emp.name)}</span>
-            <span class="crew-card-id">#${esc(emp.stateId)}</span>
-            ${role ? `<span style="color:${color};font-size:11px;font-weight:600;">${esc(role.name)}</span>` : ''}
-          </div>
-          ${badge}
-        </div>
-        <div class="crew-card-stats">
-          <div class="crew-card-stat"><span class="crew-card-stat-val text-green">${money(sales)}</span><span class="crew-card-stat-lbl">Sales</span></div>
-          <div class="crew-card-stat"><span class="crew-card-stat-val text-amber">${money(commission)}</span><span class="crew-card-stat-lbl">Commission</span></div>
-          <div class="crew-card-stat"><span class="crew-card-stat-val">${svcCount}</span><span class="crew-card-stat-lbl">Services</span></div>
-        </div>
-      </div>
-    `;
-  }).join('');
 }

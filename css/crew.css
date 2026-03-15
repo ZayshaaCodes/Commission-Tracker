@@ -1,0 +1,149 @@
+/* ===================== CREW TAB ===================== */
+.crew-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background-color: #2d2d2d;
+  border: 1px solid #333;
+  border-radius: 8px;
+}
+
+.crew-stats-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #aaa;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.crew-content-row {
+  margin-bottom: 12px;
+}
+
+.crew-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.crew-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.crew-stat-val { font-size: 18px; font-weight: 700; }
+.crew-stat-lbl { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* --- Activity Feed Items --- */
+.af-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  border-bottom: 1px solid #333;
+  font-size: 13px;
+  transition: background 0.1s;
+}
+
+.af-item:last-child { border-bottom: none; }
+.af-item:hover { background: rgba(255,255,255,0.02); }
+
+.af-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.af-name {
+  font-weight: 600;
+  color: #e0e0e0;
+  min-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.af-action {
+  flex: 1;
+  color: #a0a0a0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.af-price {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.af-time {
+  color: #555;
+  font-size: 11px;
+  white-space: nowrap;
+  min-width: 85px;
+  text-align: right;
+}
+
+.af-more {
+  text-align: center;
+  color: #555;
+  font-size: 12px;
+  padding: 8px;
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .af-name { min-width: 60px; }
+  .af-time { display: none; }
+}
+
+/* --- Sales by Employee Bar Chart --- */
+.sb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.sb-name {
+  min-width: 90px;
+  max-width: 110px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #ccc;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sb-track {
+  flex: 1;
+  height: 22px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sb-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  min-width: 2px;
+  opacity: 0.85;
+}
+
+.sb-fill:hover { opacity: 1; }
+
+.sb-amount {
+  min-width: 65px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  text-align: right;
+}

@@ -1,7 +1,7 @@
 import { $, money, esc } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
          calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
-import { isOwner, isUnlocked } from './auth.js';
+import { isUnlocked } from './auth.js';
 import { render } from './app.js';
 
 export function renderDashboard() {
@@ -35,14 +35,6 @@ export function renderDashboard() {
       <div class="metric-accent" style="background:#60a5fa;"></div>
     </div>
   `;
-
-  // Charts (owner only)
-  const chartsRow = document.querySelector('.dashboard-charts-row');
-  if (chartsRow) chartsRow.style.display = isOwner() ? '' : 'none';
-  if (isOwner()) {
-    renderTimeline();
-    renderSalesChart(activeEmps);
-  }
 
   // Employee table
   const tbody = $('dashboardBody');
@@ -127,7 +119,7 @@ export function renderDashboard() {
 }
 
 // --- ACTIVITY TIMELINE ---
-function renderTimeline() {
+export function renderTimeline() {
   const el = $('activityTimeline');
   if (!el) return;
 
@@ -194,7 +186,7 @@ function renderTimeline() {
 }
 
 // --- SALES BY EMPLOYEE CHART ---
-function renderSalesChart(activeEmps) {
+export function renderSalesChart(activeEmps) {
   const el = $('salesChart');
   if (!el) return;
 

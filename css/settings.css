@@ -1,0 +1,48 @@
+/* ===================== SETTINGS ===================== */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 800px) {
+  .settings-grid { grid-template-columns: 1fr; }
+}
+
+.role-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: #3a3a3a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.role-row input { font-size: 13px; }
+.role-row .role-name-input { flex: 1; padding: 6px 8px; }
+.role-row .role-pct-input { width: 70px; padding: 6px 8px; }
+
+.role-row .role-color-input {
+  width: 32px;
+  height: 28px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.role-row .role-delete {
+  background: none;
+  border: none;
+  color: #f87171;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.role-row .role-delete:hover { background: rgba(248,113,113,0.15); }
+
+.sheets-config { display: flex; flex-direction: column; gap: 8px; }

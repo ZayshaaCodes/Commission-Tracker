@@ -37,7 +37,12 @@ export function renderCommissions() {
   const role = getRole(emp.roleId);
   const work = getEmployeeWork(emp.id);
 
-  $('workEmployeeName').textContent = emp.name + (role ? ` (${role.name})` : '');
+  $('workEmployeeHeader').innerHTML = `
+    <span class="work-emp-name">${esc(emp.name)}</span>
+    <span class="state-id-sep">|</span>
+    <span class="work-emp-id">${esc(emp.stateId)}</span>
+    ${role ? `<span class="role-badge" style="background:${role.color}22;color:${role.color};border-color:${role.color};">${esc(role.name)}</span>` : ''}
+  `;
 
   // Inventory counters
   const inventoryServices = state.services.filter(s => s.category === 'inventory');
@@ -69,6 +74,31 @@ export function renderCommissions() {
     const w = getEmployeeWork(state.selectedEmployeeId);
     w.inventory[svcId] = Math.max(0, (w.inventory[svcId] || 0) + dir);
     if (w.inventory[svcId] === 0) delete w.inventory[svcId];
+
+    // Activity feed: batch inventory sales within 1-minute window
+    const now = Date.now();
+    const BATCH_WINDOW = 60000;
+    if (dir === 1) {
+      const recent = w.inventoryLog.find(
+        log => log.serviceId === svcId && (now - log.timestamp) < BATCH_WINDOW
+      );
+      if (recent) {
+        recent.quantity += 1;
+      } else {
+        w.inventoryLog.push({ id: uid(), serviceId: svcId, quantity: 1, timestamp: now });
+      }
+    } else if (dir === -1) {
+      const recent = w.inventoryLog.find(
+        log => log.serviceId === svcId && (now - log.timestamp) < BATCH_WINDOW && log.quantity > 0
+      );
+      if (recent) {
+        recent.quantity -= 1;
+        if (recent.quantity <= 0) {
+          w.inventoryLog = w.inventoryLog.filter(log => log.id !== recent.id);
+        }
+      }
+    }
+
     renderCommissions();
     saveState();
   };
@@ -153,32 +183,35 @@ export function renderCommissions() {
 
   const logItems = [];
 
-  for (const [svcId, qty] of Object.entries(work.inventory)) {
-    if (qty > 0) {
-      const svc = getService(svcId);
+  for (const log of work.inventoryLog) {
+    if (log.quantity > 0) {
+      const svc = getService(log.serviceId);
       if (svc) {
         logItems.push({
           type: 'inventory',
-          name: `${svc.name} x${qty}`,
-          total: getServicePrice(svcId) * qty,
-          svcId
+          name: `${svc.name} x${log.quantity}`,
+          total: getServicePrice(log.serviceId) * log.quantity,
+          logId: log.id,
+          timestamp: log.timestamp
         });
       }
     }
   }
 
-  const sortedEntries = [...work.entries].sort((a, b) => b.timestamp - a.timestamp);
-  for (const entry of sortedEntries) {
+  for (const entry of work.entries) {
     const svc = getService(entry.serviceId);
     if (svc) {
       logItems.push({
         type: 'entry',
         name: svc.name,
         total: getServicePrice(entry.serviceId),
-        entryId: entry.id
+        entryId: entry.id,
+        timestamp: entry.timestamp
       });
     }
   }
+
+  logItems.sort((a, b) => b.timestamp - a.timestamp);
 
   if (logItems.length === 0) {
     logEl.innerHTML = '<div class="log-empty">No services logged yet</div>';
@@ -186,10 +219,13 @@ export function renderCommissions() {
     for (const item of logItems) {
       const div = document.createElement('div');
       div.className = 'log-entry';
+      const deleteBtn = item.type === 'entry'
+        ? `<button class="log-delete" data-entry-id="${item.entryId}" title="Remove">&times;</button>`
+        : `<button class="log-delete" data-log-id="${item.logId}" title="Remove">&times;</button>`;
       div.innerHTML = `
         <span class="log-name">${esc(item.name)}</span>
         <span class="log-price">${money(item.total)}</span>
-        ${item.type === 'entry' ? `<button class="log-delete" data-entry-id="${item.entryId}" title="Remove">&times;</button>` : ''}
+        ${deleteBtn}
       `;
       logEl.appendChild(div);
     }
@@ -197,9 +233,19 @@ export function renderCommissions() {
     logEl.onclick = (e) => {
       const del = e.target.closest('.log-delete');
       if (!del) return;
-      const entryId = del.dataset.entryId;
       const w = getEmployeeWork(state.selectedEmployeeId);
-      w.entries = w.entries.filter(en => en.id !== entryId);
+      const entryId = del.dataset.entryId;
+      const logId = del.dataset.logId;
+      if (entryId) {
+        w.entries = w.entries.filter(en => en.id !== entryId);
+      } else if (logId) {
+        const log = w.inventoryLog.find(l => l.id === logId);
+        if (log) {
+          w.inventory[log.serviceId] = Math.max(0, (w.inventory[log.serviceId] || 0) - log.quantity);
+          if (w.inventory[log.serviceId] === 0) delete w.inventory[log.serviceId];
+          w.inventoryLog = w.inventoryLog.filter(l => l.id !== logId);
+        }
+      }
       renderCommissions();
       saveState();
     };
