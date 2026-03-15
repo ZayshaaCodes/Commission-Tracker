@@ -4,19 +4,6 @@
   const money = (n) => '$' + (Math.round((n + Number.EPSILON) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 0 });
   const uid = () => crypto.randomUUID();
 
-  function timeAgo(ts) {
-    const seconds = Math.floor((Date.now() - ts) / 1000);
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return minutes + 'm ago';
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return hours + 'h ago';
-    const days = Math.floor(hours / 24);
-    if (days < 30) return days + 'd ago';
-    const months = Math.floor(days / 30);
-    return months + 'mo ago';
-  }
-
   // === DEFAULT DATA ===
   const DEFAULT_ROLES = [
     { id: 'owner', name: 'Owner', commission: 0, color: '#22c55e' },
@@ -52,15 +39,15 @@
   ];
 
   const DEFAULT_EMPLOYEES = [
-    { id: uid(), name: 'Cara Wobbles', stateId: '1434', roleId: 'owner', active: true },
-    { id: uid(), name: 'Trey Miller', stateId: '3654', roleId: 'owner', active: true },
-    { id: uid(), name: 'Axle Waxle', stateId: '901', roleId: 'head_manager', active: true },
-    { id: uid(), name: 'Rod Blackwash', stateId: '1250', roleId: 'head_manager', active: true },
-    { id: uid(), name: 'Jeff', stateId: '468', roleId: 'head_manager', active: true },
-    { id: uid(), name: 'Dan Sanders', stateId: '1743', roleId: 'manager', active: true },
-    { id: uid(), name: 'Nathan Black', stateId: '888', roleId: 'manager', active: true },
-    { id: uid(), name: 'Shawn Howard', stateId: '4357', roleId: 'manager', active: true },
-    { id: uid(), name: 'Brett Wescott', stateId: '5141', roleId: 'master_tech', active: true }
+    { id: uid(), name: 'Cara Wobbles', stateId: '1434', roleId: 'owner', active: true, joinDate: Date.now() },
+    { id: uid(), name: 'Trey Miller', stateId: '3654', roleId: 'owner', active: true, joinDate: Date.now() },
+    { id: uid(), name: 'Axle Waxle', stateId: '901', roleId: 'head_manager', active: true, joinDate: Date.now() },
+    { id: uid(), name: 'Rod Blackwash', stateId: '1250', roleId: 'head_manager', active: true, joinDate: Date.now() },
+    { id: uid(), name: 'Jeff', stateId: '468', roleId: 'head_manager', active: true, joinDate: Date.now() },
+    { id: uid(), name: 'Dan Sanders', stateId: '1743', roleId: 'manager', active: true, joinDate: Date.now() },
+    { id: uid(), name: 'Nathan Black', stateId: '888', roleId: 'manager', active: true, joinDate: Date.now() },
+    { id: uid(), name: 'Shawn Howard', stateId: '4357', roleId: 'manager', active: true, joinDate: Date.now() },
+    { id: uid(), name: 'Brett Wescott', stateId: '5141', roleId: 'master_tech', active: true, joinDate: Date.now() }
   ];
 
   // === PERSISTENCE ===
@@ -96,6 +83,10 @@
 
   // Ensure all state keys exist (for older saved states)
   if (!state.work) state.work = {};
+  // Backfill joinDate for existing employees missing it
+  for (const emp of state.employees) {
+    if (!emp.joinDate) emp.joinDate = Date.now();
+  }
   // Clean up old sheetsConfig if present
   delete state.sheetsConfig;
 
@@ -138,10 +129,12 @@
     // Hide settings and employees tabs unless owner
     const settingsTab = document.querySelector('[data-tab="settings"]');
     const employeesTab = document.querySelector('[data-tab="employees"]');
+    const crewTab = document.querySelector('[data-tab="crew"]');
     if (settingsTab) settingsTab.style.display = accessLevel === 'owner' ? '' : 'none';
     if (employeesTab) employeesTab.style.display = accessLevel === 'owner' ? '' : 'none';
+    if (crewTab) crewTab.style.display = accessLevel === 'owner' ? '' : 'none';
     // If on a restricted tab, switch to dashboard
-    if (accessLevel !== 'owner' && (currentTab === 'settings' || currentTab === 'employees')) {
+    if (accessLevel !== 'owner' && (currentTab === 'settings' || currentTab === 'employees' || currentTab === 'crew')) {
       switchTab('dashboard');
     }
   }
@@ -537,82 +530,6 @@
       tip.style.top = (e.pageY + 16) + 'px';
     };
     tbody.onmouseleave = () => { tip.style.display = 'none'; };
-
-    // Activity feed (owner only)
-    renderActivityFeed();
-  }
-
-  // --- ACTIVITY FEED (owner only) ---
-  function renderActivityFeed() {
-    const panel = $('activityFeedPanel');
-    const el = $('activityFeed');
-    if (!panel || !el) return;
-
-    if (!isOwner()) {
-      panel.style.display = 'none';
-      return;
-    }
-    panel.style.display = '';
-
-    // Collect all entries across employees
-    const items = [];
-    for (const emp of state.employees) {
-      const work = getEmployeeWork(emp.id);
-      const role = getRole(emp.roleId);
-      for (const entry of work.entries) {
-        const svc = getService(entry.serviceId);
-        if (!svc) continue;
-        items.push({
-          timestamp: entry.timestamp,
-          empName: emp.name,
-          empColor: role ? role.color : '#666',
-          svcName: svc.name,
-          price: getServicePrice(entry.serviceId)
-        });
-      }
-      // Inventory changes (no timestamps, show as aggregate)
-      for (const [svcId, qty] of Object.entries(work.inventory)) {
-        if (qty <= 0) continue;
-        const svc = getService(svcId);
-        if (!svc) continue;
-        items.push({
-          timestamp: 0,
-          empName: emp.name,
-          empColor: role ? role.color : '#666',
-          svcName: svc.name + ' x' + qty,
-          price: getServicePrice(svcId) * qty,
-          isInventory: true
-        });
-      }
-    }
-
-    // Sort newest first, inventory items at end
-    items.sort((a, b) => b.timestamp - a.timestamp);
-
-    if (items.length === 0) {
-      el.innerHTML = '<div class="chart-empty">No activity yet</div>';
-      return;
-    }
-
-    // Show up to 30 most recent
-    const shown = items.slice(0, 30);
-    let html = '';
-    for (const item of shown) {
-      const timeStr = item.timestamp
-        ? new Date(item.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-        : 'Inventory';
-      html += `<div class="af-item">
-        <span class="af-dot" style="background:${item.empColor}"></span>
-        <span class="af-name">${esc(item.empName)}</span>
-        <span class="af-action">${esc(item.svcName)}</span>
-        <span class="af-price text-green">${money(item.price)}</span>
-        <span class="af-time">${timeStr}</span>
-      </div>`;
-    }
-    if (items.length > 30) {
-      html += `<div class="af-more">+ ${items.length - 30} more entries</div>`;
-    }
-    el.innerHTML = html;
   }
 
   // --- ACTIVITY TIMELINE ---
@@ -796,37 +713,34 @@
     const svcBtnsEl = $('serviceButtons');
     svcBtnsEl.innerHTML = '';
 
-    // Group services by functional category
-    const groups = [
-      { label: 'Government', color: '#6b7280', test: p => p === 0 },
-      { label: 'Services',   color: '#3b82f6', test: p => p > 0 && p <= 1000 },
-      { label: 'Upgrades',   color: '#a855f7', test: p => p > 1000 && p <= 5000 },
-      { label: 'Packages',   color: '#f59e0b', test: p => p > 5000 }
+    // Group services by price tier into tile panels
+    const tiers = [
+      { label: 'Free',     color: '#6b7280', test: p => p === 0 },
+      { label: 'Basic',    color: '#16a34a', test: p => p > 0 && p <= 100 },
+      { label: 'Standard', color: '#2563eb', test: p => p > 100 && p <= 1000 },
+      { label: 'Premium',  color: '#7c3aed', test: p => p > 1000 && p <= 5000 },
+      { label: 'Elite',    color: '#dc2626', test: p => p > 5000 }
     ];
 
-    for (const group of groups) {
-      const groupSvcs = logServices.filter(s => group.test(s.price));
-      if (groupSvcs.length === 0) continue;
+    for (const tier of tiers) {
+      const tierSvcs = logServices.filter(s => tier.test(s.price));
+      if (tierSvcs.length === 0) continue;
 
-      const row = document.createElement('div');
-      row.className = 'svc-row';
+      const tile = document.createElement('div');
+      tile.className = 'svc-tile';
+      tile.style.borderTopColor = tier.color;
 
-      const label = document.createElement('div');
-      label.className = 'svc-row-label';
-      label.style.borderLeftColor = group.color;
-      label.style.color = group.color;
-      label.textContent = group.label;
-      row.appendChild(label);
+      tile.innerHTML = `<div class="svc-tile-header"><span class="svc-tile-dot" style="background:${tier.color}"></span>${tier.label}<span class="svc-tile-count">${tierSvcs.length}</span></div>`;
 
-      const wrap = document.createElement('div');
-      wrap.className = 'svc-row-btns';
+      const grid = document.createElement('div');
+      grid.className = 'svc-tile-grid';
 
-      for (const svc of groupSvcs) {
+      for (const svc of tierSvcs) {
         const price = getServicePrice(svc.id);
         const btn = document.createElement('button');
         btn.className = 'service-btn';
-        btn.style.borderColor = group.color + '55';
-        btn.style.backgroundColor = group.color + '12';
+        btn.style.borderColor = tier.color;
+        btn.style.backgroundColor = tier.color + '18';
         btn.innerHTML = `<span class="svc-name">${esc(svc.name)}</span><span class="svc-price">${money(price)}</span>`;
         btn.onclick = () => {
           const w = getEmployeeWork(state.selectedEmployeeId);
@@ -834,11 +748,11 @@
           renderCommissions();
           saveState();
         };
-        wrap.appendChild(btn);
+        grid.appendChild(btn);
       }
 
-      row.appendChild(wrap);
-      svcBtnsEl.appendChild(row);
+      tile.appendChild(grid);
+      svcBtnsEl.appendChild(tile);
     }
 
     // Summary
@@ -897,8 +811,7 @@
           type: 'entry',
           name: svc.name,
           total: getServicePrice(entry.serviceId),
-          entryId: entry.id,
-          timestamp: entry.timestamp
+          entryId: entry.id
         });
       }
     }
@@ -911,7 +824,6 @@
         div.className = 'log-entry';
         div.innerHTML = `
           <span class="log-name">${esc(item.name)}</span>
-          ${item.timestamp ? `<span class="log-time">${timeAgo(item.timestamp)}</span>` : ''}
           <span class="log-price">${money(item.total)}</span>
           ${item.type === 'entry' ? `<button class="log-delete" data-entry-id="${item.entryId}" title="Remove">&times;</button>` : ''}
         `;
@@ -971,8 +883,8 @@
             <input type="checkbox" ${emp.active ? 'checked' : ''} data-emp-toggle="${emp.id}" />
             <span class="toggle-slider"></span>
           </label>
-          <span class="emp-row-name">${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></span>
           <span class="role-badge" style="background:${role ? role.color : '#666'}22;color:${role ? role.color : '#888'};border-color:${role ? role.color : '#666'};">${esc(role ? role.name : 'Unknown')}</span>
+          <span class="emp-row-name">${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></span>
         </div>
         <div class="emp-row-stats">
           <span class="emp-row-stat"><span class="text-green">${money(sales)}</span></span>
@@ -1386,7 +1298,8 @@
         name,
         stateId,
         roleId,
-        active: true
+        active: true,
+        joinDate: Date.now()
       });
 
       $('newEmpName').value = '';
@@ -1403,6 +1316,19 @@
         renderEmployees();
       });
     });
+
+    // Crew filter buttons
+    const crewFilterBtns = { Active: $('crewFilterActive'), Inactive: $('crewFilterInactive'), All: $('crewFilterAll') };
+    for (const [key, btn] of Object.entries(crewFilterBtns)) {
+      if (!btn) continue;
+      btn.onclick = () => {
+        crewFilter = key.toLowerCase();
+        Object.values(crewFilterBtns).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderCrew();
+      };
+    }
+    if (crewFilterBtns.Active) crewFilterBtns.Active.classList.add('active');
 
     // Clear employee work
     $('clearEmployeeWork').onclick = () => {

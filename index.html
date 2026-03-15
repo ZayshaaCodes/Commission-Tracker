@@ -20,6 +20,7 @@
     <div class="header-controls">
       <button class="btn tab-btn active" data-tab="dashboard">Dashboard</button>
       <button class="btn tab-btn" data-tab="commissions">Commissions</button>
+      <button class="btn tab-btn owner-only-tab" data-tab="crew">Crew</button>
       <button class="btn tab-btn" data-tab="employees">Employees</button>
       <button class="btn tab-btn" data-tab="settings">Settings</button>
       <span class="header-divider"></span>
@@ -74,11 +75,6 @@
           </table>
         </div>
       </div>
-
-      <div id="activityFeedPanel" class="panel dashboard-feed-col owner-only" style="display:none;">
-        <div class="panel-header"><h2>Activity Feed</h2></div>
-        <div id="activityFeed" class="activity-feed"></div>
-      </div>
     </div>
   </div>
   <div id="commissionsTab" class="tab-content">
@@ -89,7 +85,9 @@
 
       <div class="panel">
         <div class="panel-header">
-          <h2 id="workEmployeeName">Select Employee</h2>
+          <div id="workEmployeeHeader" class="work-emp-header">
+            <span class="work-emp-name">Select Employee</span>
+          </div>
           <div class="panel-actions">
             <button class="btn danger small" id="clearEmployeeWork">Clear All</button>
           </div>
@@ -115,6 +113,31 @@
     <div id="noEmployeeSelected" class="empty-state-large">
       <div class="empty-icon">👆</div>
       <p>Select an employee above to start logging services</p>
+    </div>
+  </div>
+
+  <!-- ===================== CREW (Owner) ===================== -->
+  <div id="crewTab" class="tab-content">
+    <div class="crew-top-row">
+      <div class="panel crew-stats-panel">
+        <div class="panel-header"><h2>Crew Overview</h2></div>
+        <div id="crewStats" class="crew-stats"></div>
+      </div>
+      <div class="panel crew-feed-panel">
+        <div class="panel-header"><h2>Activity Feed</h2></div>
+        <div id="activityFeed" class="activity-feed"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <h2>Roster</h2>
+        <div class="panel-actions">
+          <button class="btn small" id="crewFilterActive">Active</button>
+          <button class="btn small" id="crewFilterInactive">Inactive</button>
+          <button class="btn small" id="crewFilterAll">All</button>
+        </div>
+      </div>
+      <div id="crewRoster" class="crew-roster"></div>
     </div>
   </div>
 
