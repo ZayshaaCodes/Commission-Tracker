@@ -99,5 +99,4 @@
 
 /* --- Wide Desktop (>1400px) --- */
 @media (min-width: 1400px) {
-  .metrics-row { grid-template-columns: repeat(6, 1fr); }
 }
