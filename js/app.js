@@ -1,7 +1,8 @@
 import { $, uid } from './utils.js';
-import { state, saveState, getRole, calcEmployeeSales, calcEmployeeCommission } from './state.js';
+import { state, STORAGE_KEY, saveState, getRole, calcEmployeeSales, calcEmployeeCommission } from './state.js';
 import { FIREBASE_URL, loadFromFirebase, pushToFirebase, markInitialLoadDone,
-         onRemoteUpdate, startStreaming } from './firebase.js';
+         onRemoteUpdate, startStreaming, migrateLegacyData } from './firebase.js';
+import { shopId } from './shop.js';
 import { hideModal, showConfirmModal } from './modals.js';
 import { isUnlocked, getAccessLevel, lockOut, restoreSession,
          checkPasscodeExists, showUnlockModal, showSetPasscodeModal,
@@ -77,6 +78,20 @@ onRemoteUpdate(() => {
 
 // === INIT ===
 async function init() {
+  const loader = $('loadingOverlay');
+
+  // No shop selected — show picker
+  if (!shopId) {
+    if (loader) loader.style.display = 'none';
+    $('appRoot').style.display = 'none';
+    $('shopPicker').style.display = '';
+    await initShopPicker();
+    return;
+  }
+
+  // Set page title to shop name
+  document.title = shopId.charAt(0).toUpperCase() + shopId.slice(1) + ' — Commission Tracker';
+
   // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
@@ -187,9 +202,9 @@ async function init() {
   $('resetAllBtn').onclick = () => {
     showConfirmModal('Reset ALL data to defaults? This will clear both local and remote data. This cannot be undone.', async () => {
       try {
-        await fetch(FIREBASE_URL + '/state.json', { method: 'DELETE' });
+        await fetch(`${FIREBASE_URL}/shops/${shopId}/state.json`, { method: 'DELETE' });
       } catch { /* continue with local reset even if remote fails */ }
-      localStorage.removeItem('saa_commission_tracker');
+      localStorage.removeItem(STORAGE_KEY);
       location.reload();
     });
   };
@@ -229,9 +244,16 @@ async function init() {
   restoreSession();
   applyLockState();
 
-  // Startup: load from Firebase FIRST, then render
+  // Startup: migrate legacy data if needed, then load
   try {
+    await migrateLegacyData();
     await loadFromFirebase();
+    // Ensure shop is registered in the index
+    await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(shopId) + '.json', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: shopId, lastSeen: Date.now() })
+    });
   } catch { /* continue with local data */ }
   markInitialLoadDone();
   fromRemote = true;
@@ -239,7 +261,6 @@ async function init() {
   fromRemote = false;
 
   // Hide loading overlay
-  const loader = $('loadingOverlay');
   if (loader) loader.style.display = 'none';
 
   // Start real-time streaming
@@ -251,3 +272,64 @@ init().catch(err => {
   const loader = $('loadingOverlay');
   if (loader) loader.style.display = 'none';
 });
+
+// === SHOP PICKER ===
+import { getShopUrl } from './shop.js';
+
+async function initShopPicker() {
+  const listEl = $('shopList');
+  const nameInput = $('newShopName');
+  const createBtn = $('createShopBtn');
+  const errorEl = $('shopCreateError');
+
+  // Load registered shops from Firebase
+  try {
+    const res = await fetch(FIREBASE_URL + '/shops.json');
+    const data = await res.json();
+    if (data && typeof data === 'object') {
+      const shopIds = Object.keys(data).sort();
+      for (const id of shopIds) {
+        const a = document.createElement('a');
+        a.className = 'shop-list-item';
+        a.href = getShopUrl(id);
+        a.textContent = data[id].name || id;
+        listEl.appendChild(a);
+      }
+    }
+  } catch { /* offline — show empty */ }
+
+  if (!listEl.children.length) {
+    listEl.innerHTML = '<div class="shop-list-empty">No shops registered yet</div>';
+  }
+
+  // Create new shop
+  createBtn.onclick = async () => {
+    const raw = nameInput.value.trim();
+    if (!raw) { errorEl.textContent = 'Enter a shop name.'; return; }
+    const slug = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (!slug || slug.length < 2) { errorEl.textContent = 'Name must be at least 2 characters (letters/numbers).'; return; }
+    if (slug.length > 48) { errorEl.textContent = 'Name is too long.'; return; }
+    errorEl.textContent = '';
+
+    try {
+      // Check if shop already exists
+      const check = await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(slug) + '.json');
+      const existing = await check.json();
+      if (existing) { errorEl.textContent = 'A shop with that name already exists.'; return; }
+
+      // Register the shop
+      await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(slug) + '.json', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: raw, created: Date.now() })
+      });
+
+      // Navigate to the new shop
+      window.location.href = getShopUrl(slug);
+    } catch {
+      errorEl.textContent = 'Failed to create shop. Check your connection.';
+    }
+  };
+
+  nameInput.onkeydown = (e) => { if (e.key === 'Enter') createBtn.click(); };
+}

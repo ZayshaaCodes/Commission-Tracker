@@ -1,5 +1,6 @@
 import { uid } from './utils.js';
 import { scheduleSync } from './firebase.js';
+import { shopId } from './shop.js';
 
 // === DEFAULT DATA ===
 const DEFAULT_ROLES = [
@@ -35,20 +36,10 @@ const DEFAULT_SERVICES = [
   { id: 'suspension_work', name: 'Suspension Work', price: 25000, eventPrice: 3750, category: 'service' }
 ];
 
-const DEFAULT_EMPLOYEES = [
-  { id: uid(), name: 'Cara Wobbles', stateId: '1434', roleId: 'owner', active: true, joinDate: Date.now() },
-  { id: uid(), name: 'Trey Miller', stateId: '3654', roleId: 'owner', active: true, joinDate: Date.now() },
-  { id: uid(), name: 'Axle Waxle', stateId: '901', roleId: 'head_manager', active: true, joinDate: Date.now() },
-  { id: uid(), name: 'Rod Blackwash', stateId: '1250', roleId: 'head_manager', active: true, joinDate: Date.now() },
-  { id: uid(), name: 'Jeff', stateId: '468', roleId: 'head_manager', active: true, joinDate: Date.now() },
-  { id: uid(), name: 'Dan Sanders', stateId: '1743', roleId: 'manager', active: true, joinDate: Date.now() },
-  { id: uid(), name: 'Nathan Black', stateId: '888', roleId: 'manager', active: true, joinDate: Date.now() },
-  { id: uid(), name: 'Shawn Howard', stateId: '4357', roleId: 'manager', active: true, joinDate: Date.now() },
-  { id: uid(), name: 'Brett Wescott', stateId: '5141', roleId: 'master_tech', active: true, joinDate: Date.now() }
-];
+const DEFAULT_EMPLOYEES = [];
 
 // === PERSISTENCE ===
-export const STORAGE_KEY = 'saa_commission_tracker';
+export const STORAGE_KEY = shopId ? `saa_commission_tracker_${shopId}` : 'saa_commission_tracker';
 export const LOCAL_KEYS = new Set(['selectedEmployeeId', 'employeeFilter']);
 
 function loadState() {

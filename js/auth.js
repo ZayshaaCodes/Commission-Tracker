@@ -1,6 +1,11 @@
 import { $, hashPasscode } from './utils.js';
 import { FIREBASE_URL } from './firebase.js';
+import { shopId } from './shop.js';
 import { showModal, hideModal } from './modals.js';
+
+function shopUrl(path) {
+  return `${FIREBASE_URL}/shops/${shopId}/${path}`;
+}
 
 // === ACCESS CONTROL ===
 let accessLevel = 'viewer';
@@ -24,7 +29,7 @@ export function restoreSession() {
 // === PASSCODE CHECKS ===
 export async function checkPasscodeExists() {
   try {
-    const res = await fetch(FIREBASE_URL + '/passcode.json');
+    const res = await fetch(shopUrl('passcode.json'));
     const data = await res.json();
     return !!data;
   } catch { return false; }
@@ -52,8 +57,8 @@ export function showUnlockModal(onSuccess) {
     const hash = hashPasscode(code);
     try {
       const [ownerRes, empRes] = await Promise.all([
-        fetch(FIREBASE_URL + '/passcode.json'),
-        fetch(FIREBASE_URL + '/employeePasscode.json')
+        fetch(shopUrl('passcode.json')),
+        fetch(shopUrl('employeePasscode.json'))
       ]);
       const ownerHash = await ownerRes.json();
       const empHash = await empRes.json();
@@ -102,7 +107,7 @@ export function showSetPasscodeModal(onSuccess) {
     if (code !== confirm) { $('setPassError').textContent = 'Passcodes do not match.'; return; }
     try {
       const hash = hashPasscode(code);
-      const res = await fetch(FIREBASE_URL + '/passcode.json', {
+      const res = await fetch(shopUrl('passcode.json'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(hash)
@@ -147,11 +152,11 @@ export function showChangePasscodeModal() {
     if (code !== confirm) { $('changePassError').textContent = 'New passcodes do not match.'; return; }
     try {
       const oldHash = hashPasscode(old);
-      const res = await fetch(FIREBASE_URL + '/passcode.json');
+      const res = await fetch(shopUrl('passcode.json'));
       const stored = await res.json();
       if (stored !== oldHash) { $('changePassError').textContent = 'Current passcode is incorrect.'; return; }
       const newHash = hashPasscode(code);
-      await fetch(FIREBASE_URL + '/passcode.json', {
+      await fetch(shopUrl('passcode.json'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newHash)
@@ -189,7 +194,7 @@ export function showEmployeePasscodeModal() {
     if (code !== confirm) { $('empPassError').textContent = 'Passcodes do not match.'; return; }
     try {
       const hash = hashPasscode(code);
-      const res = await fetch(FIREBASE_URL + '/employeePasscode.json', {
+      const res = await fetch(shopUrl('employeePasscode.json'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(hash)

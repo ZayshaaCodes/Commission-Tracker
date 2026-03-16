@@ -22,6 +22,23 @@
     <div class="loading-text">Connecting to database...</div>
   </div>
 
+  <!-- Shop picker (shown when no ?shop= param) -->
+  <div id="shopPicker" class="shop-picker" style="display:none;">
+    <div class="shop-picker-card">
+      <h1 class="shop-picker-title">Commission Tracker</h1>
+      <p class="shop-picker-sub">Select your shop or create a new one</p>
+      <div id="shopList" class="shop-list"></div>
+      <div class="shop-picker-divider"></div>
+      <div class="shop-create-row">
+        <input id="newShopName" type="text" placeholder="New shop name..." maxlength="48" />
+        <button class="btn primary" id="createShopBtn">Create</button>
+      </div>
+      <p id="shopCreateError" class="shop-error"></p>
+    </div>
+  </div>
+
+  <!-- App (hidden until shop is selected) -->
+  <div id="appRoot">
   <div class="app-header">
     <div class="header-row-top">
       <img src="Logo_a_ds.png" alt="Dreamworks Customs" class="header-logo" />
@@ -274,6 +291,7 @@
   <div id="modalOverlay" class="modal-overlay" style="display:none;">
     <div class="modal" id="modalContent"></div>
   </div>
+  </div><!-- /appRoot -->
 
   <script type="module" src="js/app.js"></script>
 </body>
