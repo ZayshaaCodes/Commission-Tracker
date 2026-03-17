@@ -35,7 +35,7 @@ export function timeAgo(ts) {
   return months + 'mo ago';
 }
 
-// Legacy djb2-based hash — kept for backward compatibility with existing passcodes
+// Legacy djb2-based hash - kept for backward compatibility with existing passcodes
 export function hashPasscodeLegacy(code) {
   let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
   for (let i = 0; i < code.length; i++) {
@@ -97,7 +97,7 @@ function sha256js(message) {
   return [h0,h1,h2,h3,h4,h5,h6,h7].map(v=>(v>>>0).toString(16).padStart(8,'0')).join('');
 }
 
-// SHA-256 with random salt — uses Web Crypto when available, JS fallback otherwise
+// SHA-256 with random salt - uses Web Crypto when available, JS fallback otherwise
 export async function hashPasscode(code, salt) {
   if (!salt) salt = uid();
   const input = salt + ':' + code;

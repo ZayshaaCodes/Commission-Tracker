@@ -93,7 +93,7 @@
   // === UTILITIES ===
   // Simple SHA-256 implementation that works on file:// (no crypto.subtle needed)
   function hashPasscode(code) {
-    // djb2-based hash — not cryptographic, but sufficient for a client-side passcode
+    // djb2-based hash - not cryptographic, but sufficient for a client-side passcode
     let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
     for (let i = 0; i < code.length; i++) {
       const ch = code.charCodeAt(i);
@@ -471,7 +471,7 @@
       for (const [svcId, qty] of Object.entries(work.inventory)) {
         if (qty <= 0) continue;
         const svc = getService(svcId);
-        if (svc) tipLines.push(`${svc.name} x${qty} — ${money(getServicePrice(svcId) * qty)}`);
+        if (svc) tipLines.push(`${svc.name} x${qty} - ${money(getServicePrice(svcId) * qty)}`);
       }
       const svcCounts = {};
       for (const entry of work.entries) {
@@ -482,7 +482,7 @@
         svcCounts[entry.serviceId].total += getServicePrice(entry.serviceId);
       }
       for (const s of Object.values(svcCounts)) {
-        tipLines.push(`${s.name} x${s.count} — ${money(s.total)}`);
+        tipLines.push(`${s.name} x${s.count} - ${money(s.total)}`);
       }
       const tooltip = tipLines.length > 0 ? tipLines.join('\n') : 'No services logged';
 

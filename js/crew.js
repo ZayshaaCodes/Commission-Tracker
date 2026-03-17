@@ -4,6 +4,7 @@ import { state, getRole, getService, getServicePrice, getEmployeeWork,
 import { renderTimeline, renderSalesChart } from './dashboard.js';
 import { showConfirmModal } from './modals.js';
 import { render } from './app.js';
+import { flushSync } from './firebase.js';
 
 export function renderCrew() {
   // --- Crew Stats ---
@@ -65,6 +66,7 @@ export function renderCrew() {
           timestamp: Date.now()
         });
         render();
+        flushSync();
       });
     };
   }
@@ -108,7 +110,7 @@ export function renderCrew() {
           allEntries.push({
             empName: log.empName,
             color: safeColor(log.color || '#666'),
-            action: `Cleared — Gross: ${money(log.gross)}, Commission: ${money(log.commission)}`,
+            action: `Cleared - Gross: ${money(log.gross)}, Commission: ${money(log.commission)}`,
             price: 0,
             timestamp: log.timestamp,
             isMeta: true
@@ -117,7 +119,7 @@ export function renderCrew() {
           allEntries.push({
             empName: 'System',
             color: '#f59e0b',
-            action: `Weekly Payout — Gross: ${money(log.gross)}, Commission: ${money(log.commission)}`,
+            action: `Weekly Payout - Gross: ${money(log.gross)}, Commission: ${money(log.commission)}`,
             price: 0,
             timestamp: log.timestamp,
             isMeta: true

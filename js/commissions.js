@@ -2,6 +2,7 @@ import { $, money, uid, esc, timeAgo, safeColor, safeAttr } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
          calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js';
 import { getAccessLevel } from './auth.js';
+import { flushSync } from './firebase.js';
 
 export function renderCommissions() {
   const activeEmps = state.employees.filter(e => e.active);
@@ -82,7 +83,7 @@ export function renderCommissions() {
     if (activeEmps.length === 0) {
       emptyIcon.textContent = '👥';
       emptyMsg.textContent = getAccessLevel() === 'owner'
-        ? 'No employees added yet — head to the Employees tab to get started'
+        ? 'No employees added yet - head to the Employees tab to get started'
         : 'No employees have been added yet';
       emptyDropWrap.style.display = 'none';
     } else {
@@ -168,9 +169,10 @@ export function renderCommissions() {
 
     renderCommissions();
     saveState();
+    flushSync();
   };
 
-  // Service buttons — grouped by price tier
+  // Service buttons - grouped by price tier
   const logServices = state.services.filter(s => s.category === 'service');
   const svcBtnsEl = $('serviceButtons');
   svcBtnsEl.innerHTML = '';
@@ -211,6 +213,7 @@ export function renderCommissions() {
         w.entries.push({ id: uid(), serviceId: svc.id, timestamp: Date.now() });
         renderCommissions();
         saveState();
+        flushSync();
       };
       wrap.appendChild(btn);
     }
@@ -316,6 +319,7 @@ export function renderCommissions() {
       }
       renderCommissions();
       saveState();
+      flushSync();
     };
   }
 }

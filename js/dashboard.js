@@ -88,7 +88,7 @@ export function renderDashboard() {
 
   if (empData.length === 0) {
     const hint = getAccessLevel() === 'owner'
-      ? 'No employees yet — add some in the Employees tab to get started'
+      ? 'No employees yet - add some in the Employees tab to get started'
       : 'No employees have been added yet';
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px 20px;color:#888;">${hint}</td></tr>`;
   }
@@ -112,12 +112,12 @@ export function renderDashboard() {
       for (const [svcId, qty] of Object.entries(work.inventory)) {
         if (qty <= 0) continue;
         const svc = getService(svcId);
-        if (svc) allItems.push({ text: `${svc.name} x${qty} — ${money(getServicePrice(svcId) * qty)}`, time: null });
+        if (svc) allItems.push({ text: `${svc.name} x${qty} - ${money(getServicePrice(svcId) * qty)}`, time: null });
       }
       for (const entry of work.entries) {
         const svc = getService(entry.serviceId);
         if (!svc) continue;
-        allItems.push({ text: `${svc.name} — ${money(getServicePrice(entry.serviceId))}`, time: entry.timestamp });
+        allItems.push({ text: `${svc.name} - ${money(getServicePrice(entry.serviceId))}`, time: entry.timestamp });
       }
       allItems.sort((a, b) => (b.time || 0) - (a.time || 0));
       tipHtml = allItems.map(i => `<div>${esc(i.text)}${i.time ? ` <span class="muted">${timeAgo(i.time)}</span>` : ''}</div>`).join('');
@@ -127,7 +127,7 @@ export function renderDashboard() {
       for (const [svcId, qty] of Object.entries(work.inventory)) {
         if (qty <= 0) continue;
         const svc = getService(svcId);
-        if (svc) tipLines.push(`${svc.name} x${qty} — ${money(getServicePrice(svcId) * qty)}`);
+        if (svc) tipLines.push(`${svc.name} x${qty} - ${money(getServicePrice(svcId) * qty)}`);
       }
       const svcCounts = {};
       for (const entry of work.entries) {
@@ -138,7 +138,7 @@ export function renderDashboard() {
         svcCounts[entry.serviceId].total += getServicePrice(entry.serviceId);
       }
       for (const s of Object.values(svcCounts)) {
-        tipLines.push(`${s.name} x${s.count} — ${money(s.total)}`);
+        tipLines.push(`${s.name} x${s.count} - ${money(s.total)}`);
       }
       tipHtml = tipLines.map(l => `<div>${esc(l)}</div>`).join('');
     }

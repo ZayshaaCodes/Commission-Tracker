@@ -1,6 +1,6 @@
 import { $, uid, esc, safeColor } from './utils.js';
 import { state, STORAGE_KEY, saveState, getRole, calcEmployeeSales, calcEmployeeCommission } from './state.js';
-import { FIREBASE_URL, loadFromFirebase, pushToFirebase, markInitialLoadDone,
+import { FIREBASE_URL, loadFromFirebase, pushToFirebase, flushSync, markInitialLoadDone,
          onRemoteUpdate, startStreaming, migrateLegacyData } from './firebase.js';
 import { shopId } from './shop.js';
 import { hideModal, showConfirmModal } from './modals.js';
@@ -80,7 +80,7 @@ onRemoteUpdate(() => {
 async function init() {
   const loader = $('loadingOverlay');
 
-  // No shop selected — show picker
+  // No shop selected - show picker
   if (!shopId) {
     if (loader) loader.style.display = 'none';
     $('appRoot').style.display = 'none';
@@ -89,8 +89,8 @@ async function init() {
     return;
   }
 
-  // Set page title to shop name
-  document.title = shopId.charAt(0).toUpperCase() + shopId.slice(1) + ' — Commission Tracker';
+  // Set page title (fallback to slug, updated after Firebase load)
+  document.title = shopId.charAt(0).toUpperCase() + shopId.slice(1) + ' - Commission Tracker';
 
   // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -163,6 +163,7 @@ async function init() {
       });
       state.work[state.selectedEmployeeId] = { inventory: {}, entries: [] };
       render();
+      flushSync();
     });
   };
 
@@ -248,12 +249,18 @@ async function init() {
   try {
     await migrateLegacyData();
     await loadFromFirebase();
-    // Ensure shop is registered in the index
+    // Ensure shop is registered in the index (don't overwrite human-readable name)
     await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(shopId) + '.json', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: shopId, lastSeen: Date.now() })
+      body: JSON.stringify({ lastSeen: Date.now() })
     });
+    // Fetch the real shop name for the tab title
+    try {
+      const shopRes = await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(shopId) + '/name.json');
+      const shopName = await shopRes.json();
+      if (shopName) document.title = shopName + ' - Commission Tracker';
+    } catch { /* keep fallback title */ }
   } catch { /* continue with local data */ }
   markInitialLoadDone();
   fromRemote = true;
@@ -374,7 +381,7 @@ async function initShopPicker() {
       const stored = await res.json();
 
       if (!stored) {
-        // First time — set admin passcode
+        // First time - set admin passcode
         const hashed = await hashAdmin(pass);
         await fetch(FIREBASE_URL + '/admin/passcode.json', {
           method: 'PUT',
