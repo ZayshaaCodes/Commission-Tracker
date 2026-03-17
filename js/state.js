@@ -20,27 +20,27 @@ const DEFAULT_SERVICE_GROUPS = [
 ];
 
 const DEFAULT_SERVICES = [
-  { id: 'lockpick', name: 'Lockpick', price: 25, eventPrice: 13, category: 'inventory', group: '' },
-  { id: 'clean_kit', name: 'Clean Kit', price: 25, eventPrice: 13, category: 'inventory', group: '' },
-  { id: 'repair_kit', name: 'Repair Kit', price: 100, eventPrice: 50, category: 'inventory', group: '' },
-  { id: 'adv_repair_kit', name: 'Adv. Repair Kit', price: 250, eventPrice: 125, category: 'inventory', group: '' },
-  { id: 'body_repair', name: 'Body Repair', price: 50, eventPrice: 25, category: 'service', group: 'services' },
+  { id: 'lockpick', name: 'Lockpick', price: 25, eventPrice: 13, commission: 0, category: 'inventory', group: '' },
+  { id: 'clean_kit', name: 'Clean Kit', price: 25, eventPrice: 13, commission: 0, category: 'inventory', group: '' },
+  { id: 'repair_kit', name: 'Repair Kit', price: 100, eventPrice: 50, commission: 0, category: 'inventory', group: '' },
+  { id: 'adv_repair_kit', name: 'Adv. Repair Kit', price: 250, eventPrice: 125, commission: 0, category: 'inventory', group: '' },
+  { id: 'body_repair', name: 'Body Repair', price: 50, eventPrice: 25, commission: 0, category: 'service', group: 'services' },
 
-  { id: 'city_tow', name: 'City Tow', price: 700, eventPrice: 350, category: 'service', group: 'services' },
-  { id: 'county_tow', name: 'County Tow', price: 900, eventPrice: 450, category: 'service', group: 'services' },
-  { id: 'internals', name: 'Internals', price: 500, eventPrice: 350, category: 'service', group: 'services' },
-  { id: 'hg_internals', name: 'HG Internals', price: 1000, eventPrice: 450, category: 'service', group: 'services' },
-  { id: 'engine_upgrade', name: 'Engine Upgrade', price: 2500, eventPrice: 250, category: 'service', group: 'upgrades' },
-  { id: 'brake_upgrade', name: 'Brake Upgrade', price: 2500, eventPrice: 500, category: 'service', group: 'upgrades' },
-  { id: 'trans_upgrade', name: 'Transmission Upgrade', price: 2500, eventPrice: 1250, category: 'service', group: 'upgrades' },
-  { id: 'sus_upgrade', name: 'Suspension Upgrade', price: 2500, eventPrice: 1250, category: 'service', group: 'upgrades' },
-  { id: 'license_plate', name: 'License Plate', price: 4000, eventPrice: 1250, category: 'service', group: 'upgrades' },
-  { id: 'turbo', name: 'Turbo', price: 5000, eventPrice: 1250, category: 'service', group: 'upgrades' },
-  { id: 'harness', name: 'Harness', price: 5000, eventPrice: 2000, category: 'service', group: 'upgrades' },
-  { id: 'killswitch', name: 'Killswitch', price: 5000, eventPrice: 2500, category: 'service', group: 'upgrades' },
-  { id: 'employee_upgrade', name: 'Employee Upgrade', price: 7500, eventPrice: 2500, category: 'service', group: 'packages' },
-  { id: 'max_upgrade', name: 'Max Upgrade', price: 10000, eventPrice: 2500, category: 'service', group: 'packages' },
-  { id: 'suspension_work', name: 'Suspension Work', price: 25000, eventPrice: 3750, category: 'service', group: 'packages' }
+  { id: 'city_tow', name: 'City Tow', price: 700, eventPrice: 350, commission: 0, category: 'service', group: 'services' },
+  { id: 'county_tow', name: 'County Tow', price: 900, eventPrice: 450, commission: 0, category: 'service', group: 'services' },
+  { id: 'internals', name: 'Internals', price: 500, eventPrice: 350, commission: 0, category: 'service', group: 'services' },
+  { id: 'hg_internals', name: 'HG Internals', price: 1000, eventPrice: 450, commission: 0, category: 'service', group: 'services' },
+  { id: 'engine_upgrade', name: 'Engine Upgrade', price: 2500, eventPrice: 250, commission: 0, category: 'service', group: 'upgrades' },
+  { id: 'brake_upgrade', name: 'Brake Upgrade', price: 2500, eventPrice: 500, commission: 0, category: 'service', group: 'upgrades' },
+  { id: 'trans_upgrade', name: 'Transmission Upgrade', price: 2500, eventPrice: 1250, commission: 0, category: 'service', group: 'upgrades' },
+  { id: 'sus_upgrade', name: 'Suspension Upgrade', price: 2500, eventPrice: 1250, commission: 0, category: 'service', group: 'upgrades' },
+  { id: 'license_plate', name: 'License Plate', price: 4000, eventPrice: 1250, commission: 0, category: 'service', group: 'upgrades' },
+  { id: 'turbo', name: 'Turbo', price: 5000, eventPrice: 1250, commission: 0, category: 'service', group: 'upgrades' },
+  { id: 'harness', name: 'Harness', price: 5000, eventPrice: 2000, commission: 0, category: 'service', group: 'upgrades' },
+  { id: 'killswitch', name: 'Killswitch', price: 5000, eventPrice: 2500, commission: 0, category: 'service', group: 'upgrades' },
+  { id: 'employee_upgrade', name: 'Employee Upgrade', price: 7500, eventPrice: 2500, commission: 0, category: 'service', group: 'packages' },
+  { id: 'max_upgrade', name: 'Max Upgrade', price: 10000, eventPrice: 2500, commission: 0, category: 'service', group: 'packages' },
+  { id: 'suspension_work', name: 'Suspension Work', price: 25000, eventPrice: 3750, commission: 0, category: 'service', group: 'packages' }
 ];
 
 const DEFAULT_EMPLOYEES = [];
@@ -155,7 +155,27 @@ export function calcEmployeeCommission(empId) {
   if (!emp) return 0;
   const role = getRole(emp.roleId);
   const rate = role ? role.commission / 100 : 0;
-  return calcEmployeeSales(empId) * rate;
+  const work = getEmployeeWork(empId);
+  let total = 0;
+  for (const [svcId, qty] of Object.entries(work.inventory)) {
+    const svc = state.services.find(s => s.id === svcId);
+    const flat = svc ? (svc.commission || 0) : 0;
+    if (flat > 0) {
+      total += flat * qty;
+    } else {
+      total += getServicePrice(svcId) * qty * rate;
+    }
+  }
+  for (const entry of work.entries) {
+    const svc = state.services.find(s => s.id === entry.serviceId);
+    const flat = svc ? (svc.commission || 0) : 0;
+    if (flat > 0) {
+      total += flat;
+    } else {
+      total += getServicePrice(entry.serviceId) * rate;
+    }
+  }
+  return total;
 }
 
 export function calcEmployeeServiceCount(empId) {

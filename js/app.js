@@ -186,7 +186,7 @@ async function init() {
   // Settings: Add service
   $('addServiceBtn').onclick = () => {
     const newId = 'svc_' + Date.now();
-    state.services.push({ id: newId, name: 'New Service', price: 0, eventPrice: 0, category: 'service', group: '' });
+    state.services.push({ id: newId, name: 'New Service', price: 0, eventPrice: 0, commission: 0, category: 'service', group: '' });
     render();
   };
 
@@ -262,11 +262,21 @@ async function init() {
   restoreSession();
   applyLockState();
 
-  // Startup: migrate legacy data if needed, then load
+  // Startup: verify shop exists, migrate legacy data, then load
   try {
+    // Check that this shop was properly created (has a name/created entry)
+    const shopMeta = await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(shopId) + '/name.json');
+    const shopName = await shopMeta.json();
+    if (!shopName) {
+      // Shop was never created through the invite code flow — redirect to picker
+      localStorage.removeItem(STORAGE_KEY);
+      window.location.href = window.location.pathname;
+      return;
+    }
+
     await migrateLegacyData();
     await loadFromFirebase();
-    // Ensure shop is registered in the index (don't overwrite human-readable name)
+    // Update last-seen timestamp
     await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(shopId) + '.json', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

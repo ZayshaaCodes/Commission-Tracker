@@ -15,6 +15,8 @@ export function renderEmployees() {
       opt.textContent = role.name;
       roleSelect.appendChild(opt);
     }
+    const mechanic = state.roles.find(r => r.id === 'mechanic') || state.roles.find(r => r.name.toLowerCase() === 'mechanic');
+    if (mechanic) roleSelect.value = mechanic.id;
   }
 
   const grid = $('employeeGrid');

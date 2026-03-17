@@ -119,6 +119,7 @@ export function renderSettings() {
       <td><input value="${esc(svc.name)}" data-svc-name="${safeAttr(svc.id)}" style="width:100%;padding:6px 8px;font-size:13px;" /></td>
       <td><input type="number" value="${svc.price}" data-svc-price="${safeAttr(svc.id)}" style="width:90px;padding:6px 8px;font-size:13px;" min="0" /></td>
       <td><input type="number" value="${svc.eventPrice ?? svc.price}" data-svc-event="${safeAttr(svc.id)}" style="width:90px;padding:6px 8px;font-size:13px;" min="0" /></td>
+      <td><input type="number" value="${svc.commission || 0}" data-svc-comm="${safeAttr(svc.id)}" style="width:80px;padding:6px 8px;font-size:13px;" min="0" placeholder="0" /></td>
       <td>
         <select data-svc-cat="${safeAttr(svc.id)}" style="padding:6px;font-size:12px;">
           <option value="inventory" ${svc.category === 'inventory' ? 'selected' : ''}>Inventory</option>
@@ -143,12 +144,14 @@ export function renderSettings() {
     const nameIn = e.target.closest('[data-svc-name]');
     const priceIn = e.target.closest('[data-svc-price]');
     const eventIn = e.target.closest('[data-svc-event]');
+    const commIn = e.target.closest('[data-svc-comm]');
     const catIn = e.target.closest('[data-svc-cat]');
     const groupIn = e.target.closest('[data-svc-group]');
 
     if (nameIn) { const s = getService(nameIn.dataset.svcName); if (s) s.name = nameIn.value.slice(0, 64); }
     if (priceIn) { const s = getService(priceIn.dataset.svcPrice); if (s) s.price = Math.max(0, parseFloat(priceIn.value) || 0); }
     if (eventIn) { const s = getService(eventIn.dataset.svcEvent); if (s) s.eventPrice = Math.max(0, parseFloat(eventIn.value) || 0); }
+    if (commIn) { const s = getService(commIn.dataset.svcComm); if (s) s.commission = Math.max(0, parseFloat(commIn.value) || 0); }
     if (catIn) { const s = getService(catIn.dataset.svcCat); if (s) s.category = catIn.value; }
     if (groupIn) { const s = getService(groupIn.dataset.svcGroup); if (s) s.group = groupIn.value; }
     saveState();

@@ -4,6 +4,17 @@ import { state, getRole, getService, getServiceGroup, getServicePrice, getEmploy
 import { getAccessLevel } from './auth.js';
 import { flushSync } from './firebase.js';
 
+// Module-level handler so removeEventListener can find the same reference
+function closeDropdown(e) {
+  if (!e.target.closest('.emp-dropdown-wrap')) {
+    const dl = $('employeeDropdownList');
+    const ndl = $('noEmpDropdownList');
+    if (dl) dl.style.display = 'none';
+    if (ndl) ndl.style.display = 'none';
+  }
+}
+let dropdownListenerBound = false;
+
 export function renderCommissions() {
   const activeEmps = state.employees.filter(e => e.active);
   const dropList = $('employeeDropdownList');
@@ -49,15 +60,11 @@ export function renderCommissions() {
     noEmpDropList.style.display = noEmpDropList.style.display === 'none' ? '' : 'none';
   };
 
-  // Close on outside click
-  const closeDropdown = (e) => {
-    if (!e.target.closest('.emp-dropdown-wrap')) {
-      dropList.style.display = 'none';
-      noEmpDropList.style.display = 'none';
-    }
-  };
-  document.removeEventListener('click', closeDropdown);
-  document.addEventListener('click', closeDropdown);
+  // Close on outside click (bound once at module level)
+  if (!dropdownListenerBound) {
+    document.addEventListener('click', closeDropdown);
+    dropdownListenerBound = true;
+  }
 
   // Locked viewers always see the lock screen
   if (getAccessLevel() === 'viewer') {

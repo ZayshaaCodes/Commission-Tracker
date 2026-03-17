@@ -1,0 +1,761 @@
+{
+  "roles": [
+    {
+      "color": "#22c55e",
+      "commission": 0,
+      "id": "owner",
+      "name": "Owner"
+    },
+    {
+      "color": "#7c3aed",
+      "commission": 50,
+      "id": "head_manager",
+      "name": "Head Manager"
+    },
+    {
+      "color": "#eab308",
+      "commission": 45,
+      "id": "manager",
+      "name": "Manager"
+    },
+    {
+      "color": "#06b6d4",
+      "commission": 40,
+      "id": "master_tech",
+      "name": "Master Tech"
+    },
+    {
+      "color": "#f97316",
+      "commission": 30,
+      "id": "senior_mechanic",
+      "name": "Sr. Mechanic"
+    },
+    {
+      "color": "#94a3b8",
+      "commission": 25,
+      "id": "mechanic",
+      "name": "Mechanic"
+    }
+  ],
+  "services": [
+    {
+      "category": "inventory",
+      "eventPrice": 13,
+      "id": "lockpick",
+      "name": "Lockpick",
+      "price": 25
+    },
+    {
+      "category": "inventory",
+      "eventPrice": 13,
+      "id": "clean_kit",
+      "name": "Clean Kit",
+      "price": 25
+    },
+    {
+      "category": "inventory",
+      "eventPrice": 50,
+      "id": "repair_kit",
+      "name": "Repair Kit",
+      "price": 100
+    },
+    {
+      "category": "inventory",
+      "eventPrice": 125,
+      "id": "adv_repair_kit",
+      "name": "Adv. Repair Kit",
+      "price": 250
+    },
+    {
+      "category": "service",
+      "eventPrice": 25,
+      "group": "services",
+      "id": "body_repair",
+      "name": "Body Repair",
+      "price": 0
+    },
+    {
+      "category": "service",
+      "eventPrice": 0,
+      "group": "government",
+      "id": "gov_internals",
+      "name": "Gov Internals",
+      "price": 0
+    },
+    {
+      "category": "service",
+      "eventPrice": 0,
+      "group": "government",
+      "id": "gov_hg_internals",
+      "name": "Gov HG Internals",
+      "price": 0
+    },
+    {
+      "category": "service",
+      "eventPrice": 350,
+      "group": "services",
+      "id": "city_tow",
+      "name": "City Tow",
+      "price": 700
+    },
+    {
+      "category": "service",
+      "eventPrice": 450,
+      "group": "services",
+      "id": "county_tow",
+      "name": "County Tow",
+      "price": 900
+    },
+    {
+      "category": "service",
+      "eventPrice": 350,
+      "group": "services",
+      "id": "internals",
+      "name": "Internals",
+      "price": 800
+    },
+    {
+      "category": "service",
+      "eventPrice": 450,
+      "group": "services",
+      "id": "hg_internals",
+      "name": "HG Internals",
+      "price": 1200
+    },
+    {
+      "category": "service",
+      "eventPrice": 250,
+      "group": "upgrades",
+      "id": "engine_upgrade",
+      "name": "Engine Upgrade",
+      "price": 2500
+    },
+    {
+      "category": "service",
+      "eventPrice": 500,
+      "group": "upgrades",
+      "id": "brake_upgrade",
+      "name": "Brake Upgrade",
+      "price": 2500
+    },
+    {
+      "category": "service",
+      "eventPrice": 1250,
+      "group": "upgrades",
+      "id": "trans_upgrade",
+      "name": "Transmission Upgrade",
+      "price": 2500
+    },
+    {
+      "category": "service",
+      "eventPrice": 1250,
+      "group": "upgrades",
+      "id": "sus_upgrade",
+      "name": "Suspension Upgrade",
+      "price": 2500
+    },
+    {
+      "category": "inventory",
+      "eventPrice": 1250,
+      "id": "license_plate",
+      "name": "License Plate",
+      "price": 3000
+    },
+    {
+      "category": "service",
+      "eventPrice": 1250,
+      "group": "upgrades",
+      "id": "turbo",
+      "name": "Turbo",
+      "price": 5000
+    },
+    {
+      "category": "service",
+      "eventPrice": 2000,
+      "group": "upgrades",
+      "id": "harness",
+      "name": "Harness",
+      "price": 8000
+    },
+    {
+      "category": "service",
+      "eventPrice": 2500,
+      "group": "upgrades",
+      "id": "killswitch",
+      "name": "Killswitch",
+      "price": 8000
+    },
+    {
+      "category": "service",
+      "eventPrice": 2500,
+      "group": "packages",
+      "id": "employee_upgrade",
+      "name": "Employee Upgrade",
+      "price": 8000
+    },
+    {
+      "category": "service",
+      "eventPrice": 2500,
+      "group": "packages",
+      "id": "max_upgrade",
+      "name": "Max Upgrade",
+      "price": 13000
+    }
+  ],
+  "employees": [
+    {
+      "active": true,
+      "id": "94204ce5-5450-40b3-b8c3-0c225158fced",
+      "name": "Cara Wobbles",
+      "roleId": "owner",
+      "stateId": "1434"
+    },
+    {
+      "active": true,
+      "id": "7fef7047-25cf-4db1-b8d8-759b55e780c1",
+      "name": "Trey Miller",
+      "roleId": "owner",
+      "stateId": "3654"
+    },
+    {
+      "active": true,
+      "id": "b1ff9299-2435-4ea6-b17f-bc10607ec298",
+      "name": "Axle Waxle",
+      "roleId": "head_manager",
+      "stateId": "901"
+    },
+    {
+      "active": false,
+      "id": "5f5c3b33-45b5-45d9-8af2-9c49c58d160a",
+      "name": "Jeff Steelflex",
+      "roleId": "head_manager",
+      "stateId": "468"
+    },
+    {
+      "active": false,
+      "id": "d5cf48b8-ae2e-4bfe-a17b-3ddcfa30577d",
+      "name": "Rod Blackwash",
+      "roleId": "head_manager",
+      "stateId": "1250"
+    },
+    {
+      "active": true,
+      "id": "ccdbb78d-1dc4-4462-a00d-1fc7bcb84c57",
+      "joinDate": 1773562896208,
+      "name": "Dallas McBride",
+      "roleId": "manager",
+      "stateId": "3449"
+    },
+    {
+      "active": true,
+      "id": "39c81575-e65b-4efc-afcf-faadc0c7f540",
+      "name": "Dan Sanders",
+      "roleId": "manager",
+      "stateId": "1743"
+    },
+    {
+      "active": false,
+      "id": "2e71b538-5b34-4d52-8a07-72ad137405c7",
+      "name": "Nathan Black",
+      "roleId": "manager",
+      "stateId": "888"
+    },
+    {
+      "active": false,
+      "id": "7a76b980-6d40-4a0b-8f3b-c16a0a3e3440",
+      "name": "Shawn Howard",
+      "roleId": "manager",
+      "stateId": "4357"
+    },
+    {
+      "active": false,
+      "id": "37b351ab-0478-4e7b-859b-9af4977a00b5",
+      "name": "Brett Wescott",
+      "roleId": "master_tech",
+      "stateId": "5141"
+    },
+    {
+      "active": false,
+      "id": "fc984264-3dfe-4947-abcf-ff4e2ceb9c07",
+      "name": "Matty B",
+      "roleId": "master_tech",
+      "stateId": "4805"
+    },
+    {
+      "active": true,
+      "id": "aaf1a16a-d1f5-4c05-a6f0-86e0439fe783",
+      "name": "Peter Pickledick",
+      "roleId": "master_tech",
+      "stateId": "4955"
+    },
+    {
+      "active": true,
+      "id": "8c0c758f-08ca-42bb-9836-bcada093bb46",
+      "name": "Hobo Steve",
+      "roleId": "senior_mechanic",
+      "stateId": "6560"
+    },
+    {
+      "active": true,
+      "id": "01e1c5ab-e1f8-40f8-8478-7778c78b83a0",
+      "joinDate": 1773711751459,
+      "name": "Johhny Cox",
+      "roleId": "senior_mechanic",
+      "stateId": "284"
+    },
+    {
+      "active": false,
+      "id": "c3436c35-1e02-41f1-bfbd-9b160b587fcf",
+      "name": "John Pots",
+      "roleId": "senior_mechanic",
+      "stateId": "4650"
+    },
+    {
+      "active": true,
+      "id": "c04c4600-8b12-4d90-9eca-96dcfebc516b",
+      "joinDate": 1773711723041,
+      "name": "Lil Rodney",
+      "roleId": "senior_mechanic",
+      "stateId": "1695"
+    },
+    {
+      "active": false,
+      "id": "485491df-54aa-4598-acf2-b972a2ed09d5",
+      "name": "Miles Moon",
+      "roleId": "senior_mechanic",
+      "stateId": "7064"
+    },
+    {
+      "active": false,
+      "id": "5dce83c7-869d-4b87-8854-aae290d0abe5",
+      "name": "Alex Garder",
+      "roleId": "mechanic",
+      "stateId": "6765"
+    },
+    {
+      "active": true,
+      "id": "366a659a-d5f2-4cf2-88d4-2a0d84f2588b",
+      "joinDate": 1773622737510,
+      "name": "Dandy Leone",
+      "roleId": "mechanic",
+      "stateId": "5791"
+    },
+    {
+      "active": false,
+      "id": "5276a002-a152-4795-80cd-7c36b960e328",
+      "name": "Jack Kingston",
+      "roleId": "mechanic",
+      "stateId": "426"
+    },
+    {
+      "active": false,
+      "id": "81d61e14-dc36-488e-8d8b-2e053535121d",
+      "name": "Jack Suarez",
+      "roleId": "mechanic",
+      "stateId": "6176"
+    },
+    {
+      "active": false,
+      "id": "7a2404d8-7d5b-4825-9e23-e5e1a3fe09b3",
+      "name": "James Counter",
+      "roleId": "mechanic",
+      "stateId": "7020"
+    },
+    {
+      "active": false,
+      "id": "cfc63bb9-3594-4fb9-9d75-6dcf4c26704e",
+      "name": "John Doe",
+      "roleId": "mechanic",
+      "stateId": "4751"
+    },
+    {
+      "active": true,
+      "id": "2b30fac9-3c92-4958-b5ad-86c6a27683ce",
+      "name": "Jordan Walker",
+      "roleId": "mechanic",
+      "stateId": "5797"
+    },
+    {
+      "active": false,
+      "id": "925208fe-5aba-4d80-bd7d-4d18a0f7867d",
+      "name": "Luke Vance",
+      "roleId": "mechanic",
+      "stateId": "2423"
+    },
+    {
+      "active": false,
+      "id": "e60a9ce3-dc5b-4f04-bba4-5253901d8b08",
+      "name": "Mike Allen",
+      "roleId": "mechanic",
+      "stateId": "5710"
+    },
+    {
+      "active": true,
+      "id": "8e0e4bd3-1ec6-4d6a-bd72-0dddbe797ac7",
+      "joinDate": 1773617799320,
+      "name": "Mike Hocks",
+      "roleId": "mechanic",
+      "stateId": "5387"
+    },
+    {
+      "active": true,
+      "id": "3981eb5a-4f80-4d7c-bfc4-d125092ff35f",
+      "name": "Rick O.Neil",
+      "roleId": "mechanic",
+      "stateId": "8085"
+    }
+  ],
+  "work": {
+    "195ab72c-c995-4355-b460-053277a93c61": {
+      "inventory": {},
+      "entries": [
+        {
+          "id": "035cfc06-fbec-41a2-b98c-d6b7ff6d1955",
+          "serviceId": "internals",
+          "timestamp": 1773518949197
+        }
+      ],
+      "inventoryLog": []
+    },
+    "366a659a-d5f2-4cf2-88d4-2a0d84f2588b": {
+      "inventory": {},
+      "entries": [
+        {
+          "id": "ba585233-8ff1-48b6-9242-f089f9229fd8",
+          "serviceId": "max_upgrade",
+          "timestamp": 1773627213932
+        },
+        {
+          "id": "8a01bca3-2e0f-4217-b634-5c4e032ce4fd",
+          "serviceId": "max_upgrade",
+          "timestamp": 1773627214380
+        },
+        {
+          "id": "5e017b53-1484-4edc-813f-22056d44db16",
+          "serviceId": "internals",
+          "timestamp": 1773705233033
+        },
+        {
+          "id": "0d3c4d24-5dfb-4962-95f0-9cca7538d027",
+          "serviceId": "max_upgrade",
+          "timestamp": 1773706361135
+        }
+      ],
+      "inventoryLog": []
+    },
+    "39c81575-e65b-4efc-afcf-faadc0c7f540": {
+      "inventory": {},
+      "entries": [
+        {
+          "id": "9bde423d-b7bf-4888-9c5b-ade31b7ea6a8",
+          "serviceId": "hg_internals",
+          "timestamp": 1773711375125
+        },
+        {
+          "id": "83d9622a-3cd3-4940-a077-25241649c7db",
+          "serviceId": "hg_internals",
+          "timestamp": 1773711375380
+        },
+        {
+          "id": "ce7fc717-bcfe-4d79-a078-23832f443397",
+          "serviceId": "hg_internals",
+          "timestamp": 1773711375668
+        }
+      ],
+      "inventoryLog": []
+    },
+    "7fef7047-25cf-4db1-b8d8-759b55e780c1": {
+      "inventory": {},
+      "entries": [
+        {
+          "id": "f6df4fbd-c836-438a-89ee-dc3bad06e0dd",
+          "serviceId": "gov_hg_internals",
+          "timestamp": 1773705288909
+        }
+      ],
+      "inventoryLog": []
+    },
+    "8e0e4bd3-1ec6-4d6a-bd72-0dddbe797ac7": {
+      "inventory": {},
+      "entries": [
+        {
+          "id": "d9e7a521-d1f1-4ac8-9bff-cb34ef68ec96",
+          "serviceId": "body_repair",
+          "timestamp": 1773636018557
+        },
+        {
+          "id": "77b5d053-ad76-4c96-9a4c-b89cb32d75f2",
+          "serviceId": "body_repair",
+          "timestamp": 1773636018868
+        },
+        {
+          "id": "8c15722b-c719-4210-bb36-0608a7715474",
+          "serviceId": "hg_internals",
+          "timestamp": 1773636021092
+        },
+        {
+          "id": "ec97c232-c99e-435c-b3f4-fca1be83e0ff",
+          "serviceId": "internals",
+          "timestamp": 1773636022256
+        }
+      ],
+      "inventoryLog": []
+    },
+    "94204ce5-5450-40b3-b8c3-0c225158fced": {
+      "inventory": {},
+      "entries": [
+        {
+          "id": "6ebde8f8-76b3-4e28-b5fc-f70983d882d1",
+          "serviceId": "hg_internals",
+          "timestamp": 1773607403884
+        },
+        {
+          "id": "14f379e9-de6b-4b53-a082-25ddaa7ad6b1",
+          "serviceId": "max_upgrade",
+          "timestamp": 1773610434253
+        },
+        {
+          "id": "43023d5b-2e8e-4acf-a2e1-a7e03089ddd3",
+          "serviceId": "internals",
+          "timestamp": 1773614086970
+        },
+        {
+          "id": "ea14c93f-2c76-4298-88c3-4517f391a42e",
+          "serviceId": "internals",
+          "timestamp": 1773614087152
+        },
+        {
+          "id": "fb669ab5-182d-474a-8ac0-9ec597fd9b76",
+          "serviceId": "internals",
+          "timestamp": 1773614087460
+        },
+        {
+          "id": "c96c19bd-49be-4ea7-8af4-cdd865252288",
+          "serviceId": "county_tow",
+          "timestamp": 1773616847972
+        },
+        {
+          "id": "650e37a2-0c20-46be-ae61-c1677666527c",
+          "serviceId": "internals",
+          "timestamp": 1773616853075
+        }
+      ],
+      "inventoryLog": []
+    },
+    "aaf1a16a-d1f5-4c05-a6f0-86e0439fe783": {
+      "inventory": {},
+      "entries": [
+        {
+          "id": "26a89b00-a52d-41fb-9983-37607296b77f",
+          "serviceId": "hg_internals",
+          "timestamp": 1773639748334
+        }
+      ],
+      "inventoryLog": []
+    },
+    "ccdbb78d-1dc4-4462-a00d-1fc7bcb84c57": {
+      "inventory": {},
+      "entries": [
+        {
+          "id": "57237672-fbd8-4684-8703-e30b957b4fe7",
+          "serviceId": "engine_upgrade",
+          "timestamp": 1773610594820
+        },
+        {
+          "id": "c444ee82-5bb7-4b7b-899f-b832d689914b",
+          "serviceId": "body_repair",
+          "timestamp": 1773610595838
+        },
+        {
+          "id": "623b208a-7e00-4edd-92cf-ed3418ec94d2",
+          "serviceId": "body_repair",
+          "timestamp": 1773610597340
+        },
+        {
+          "id": "95718054-812b-41c1-85ef-d5daf7fc4c07",
+          "serviceId": "internals",
+          "timestamp": 1773610599624
+        },
+        {
+          "id": "9fd13079-4596-42da-a1cd-ba517153215e",
+          "serviceId": "internals",
+          "timestamp": 1773614073144
+        },
+        {
+          "id": "eeaba038-6221-4076-8e9a-9ff850afd310",
+          "serviceId": "internals",
+          "timestamp": 1773614073335
+        },
+        {
+          "id": "8a58ed9a-4853-4bee-b973-29c11a708f99",
+          "serviceId": "internals",
+          "timestamp": 1773614077337
+        }
+      ],
+      "inventoryLog": []
+    }
+  },
+  "eventMode": false,
+  "selectedEmployeeId": "366a659a-d5f2-4cf2-88d4-2a0d84f2588b",
+  "employeeFilter": "active",
+  "activityLog": [
+    {
+      "commission": 2485,
+      "gross": 12375,
+      "id": "0218b6f7-f626-48ff-9210-89f3d43e37f5",
+      "timestamp": 1773597921746,
+      "type": "payout"
+    },
+    {
+      "color": "#22c55e",
+      "commission": 0,
+      "empName": "Trey Miller",
+      "gross": 3200,
+      "id": "29f4f01e-7c34-4fd3-8189-6073706d8b98",
+      "timestamp": 1773604782946,
+      "type": "clear"
+    },
+    {
+      "color": "#f97316",
+      "commission": 900,
+      "empName": "Hobo Steve",
+      "gross": 3000,
+      "id": "b468b216-d35b-43ad-b91b-96fbdeb9c96d",
+      "timestamp": 1773604814399,
+      "type": "clear"
+    },
+    {
+      "color": "#7c3aed",
+      "commission": 12.5,
+      "empName": "Axle Waxle",
+      "gross": 25,
+      "id": "660be790-df41-404e-9b88-9b54cdf7ad2f",
+      "timestamp": 1773604819095,
+      "type": "clear"
+    },
+    {
+      "color": "#94a3b8",
+      "commission": 6.25,
+      "empName": "Jordan Walker",
+      "gross": 25,
+      "id": "b6b45d05-09e2-4f16-8fd7-6e9a0dcc197a",
+      "timestamp": 1773604823395,
+      "type": "clear"
+    },
+    {
+      "color": "#94a3b8",
+      "commission": 6.25,
+      "empName": "Rick O.Neil",
+      "gross": 25,
+      "id": "ee3ff6a1-050a-496e-b9ae-a501deca9906",
+      "timestamp": 1773604826667,
+      "type": "clear"
+    }
+  ],
+  "payoutHistory": [
+    {
+      "employees": [
+        {
+          "color": "#22c55e",
+          "commission": 0,
+          "empName": "Cara Wobbles",
+          "gross": 2450,
+          "roleId": "owner"
+        },
+        {
+          "color": "#22c55e",
+          "commission": 0,
+          "empName": "Trey Miller",
+          "gross": 3250,
+          "roleId": "owner"
+        },
+        {
+          "color": "#7c3aed",
+          "commission": 12.5,
+          "empName": "Axle Waxle",
+          "gross": 25,
+          "roleId": "head_manager"
+        },
+        {
+          "color": "#eab308",
+          "commission": 1080,
+          "empName": "Dan Sanders",
+          "gross": 2400,
+          "roleId": "manager"
+        },
+        {
+          "color": "#06b6d4",
+          "commission": 480,
+          "empName": "Peter Pickledick",
+          "gross": 1200,
+          "roleId": "master_tech"
+        },
+        {
+          "color": "#f97316",
+          "commission": 900,
+          "empName": "Hobo Steve",
+          "gross": 3000,
+          "roleId": "senior_mechanic"
+        },
+        {
+          "color": "#94a3b8",
+          "commission": 6.25,
+          "empName": "Jordan Walker",
+          "gross": 25,
+          "roleId": "mechanic"
+        },
+        {
+          "color": "#94a3b8",
+          "commission": 6.25,
+          "empName": "Rick O.Neil",
+          "gross": 25,
+          "roleId": "mechanic"
+        }
+      ],
+      "id": "5efc3599-ae56-4dff-9103-dfda49828047",
+      "net": 9890,
+      "timestamp": 1773597921746,
+      "totalCommission": 2485,
+      "totalSales": 12375
+    }
+  ],
+  "shopName": "",
+  "shopLogo": "",
+  "goldPricing": {
+    "2": {
+      "max": 19,
+      "min": 12,
+      "price": 500
+    },
+    "4": {
+      "min": 26,
+      "price": 1000
+    }
+  },
+  "serviceGroups": [
+    {
+      "id": "government",
+      "name": "Government",
+      "color": "#6b7280",
+      "sortOrder": 0
+    },
+    {
+      "id": "services",
+      "name": "Services",
+      "color": "#3b82f6",
+      "sortOrder": 1
+    },
+    {
+      "id": "upgrades",
+      "name": "Upgrades",
+      "color": "#a855f7",
+      "sortOrder": 2
+    },
+    {
+      "id": "packages",
+      "name": "Packages",
+      "color": "#f59e0b",
+      "sortOrder": 3
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { isUnlocked, getAccessLevel } from './auth.js';
 import { render } from './app.js';
 
 let dashSort = { key: 'sales', dir: -1 };
+let dashListenersBound = false;
 
 export function renderDashboard() {
   const activeEmps = state.employees.filter(e => e.active);
@@ -178,24 +179,28 @@ export function renderDashboard() {
     }
   };
 
-  // Hover tooltip (follows cursor)
-  const tip = $('dashboardTooltip');
-  tbody.onmouseover = (e) => {
-    const tr = e.target.closest('tr[data-tip-html]');
-    if (!tr) { tip.style.display = 'none'; return; }
-    tip.innerHTML = tr.dataset.tipHtml;
-    tip.style.display = 'block';
-  };
-  tbody.onmousemove = (e) => {
-    if (tip.style.display === 'none') return;
-    tip.style.left = (e.pageX + 12) + 'px';
-    tip.style.top = (e.pageY + 16) + 'px';
-  };
-  tbody.onmouseleave = () => { tip.style.display = 'none'; };
+  // Hover tooltip + column sort (bind once, not every render)
+  if (!dashListenersBound) {
+    dashListenersBound = true;
+    const tip = $('dashboardTooltip');
+    tbody.addEventListener('mouseover', (e) => {
+      const tr = e.target.closest('tr[data-tip-html]');
+      if (!tr) { tip.style.display = 'none'; return; }
+      tip.innerHTML = tr.dataset.tipHtml;
+      tip.style.display = 'block';
+    });
+    tbody.addEventListener('mousemove', (e) => {
+      if (tip.style.display === 'none') return;
+      tip.style.left = (e.pageX + 12) + 'px';
+      tip.style.top = (e.pageY + 16) + 'px';
+    });
+    tbody.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
 
-  // Column header sort
-  document.querySelectorAll('#dashboardTable th.sortable').forEach(th => {
-    th.onclick = () => {
+    // Column header sort (event delegation on table)
+    const table = document.getElementById('dashboardTable');
+    table.addEventListener('click', (e) => {
+      const th = e.target.closest('th.sortable');
+      if (!th) return;
       const key = th.dataset.sort;
       if (dashSort.key === key) {
         dashSort.dir *= -1;
@@ -204,8 +209,8 @@ export function renderDashboard() {
         dashSort.dir = key === 'name' || key === 'role' ? 1 : -1;
       }
       renderDashboard();
-    };
-  });
+    });
+  }
 }
 
 // --- ACTIVITY TIMELINE ---
