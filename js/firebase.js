@@ -243,21 +243,26 @@ function applyRemoteData(remoteData) {
   if (!remoteData || typeof remoteData !== 'object') return;
 
   const keysToResync = new Set();
+  let anyChange = false;
 
   // Deep-merge work - preserves locally-added entries from both tabs
   if (remoteData.work !== undefined) {
+    const before = JSON.stringify(state.work, replacer);
     const merged = mergeWork(state.work || {}, remoteData.work || {});
     if (workNeedsResync(merged, remoteData.work)) keysToResync.add('work');
     state.work = merged;
+    if (JSON.stringify(state.work, replacer) !== before) anyChange = true;
   }
 
   // Merge append-only collections by ID (activity log, payout history)
   for (const k of ['activityLog', 'payoutHistory']) {
     if (remoteData[k] !== undefined) {
+      const before = JSON.stringify(state[k], replacer);
       const remote = ensureArray(remoteData[k]);
       const merged = mergeById(state[k] || [], remote);
       if (merged.length > remote.length) keysToResync.add(k);
       state[k] = merged;
+      if (JSON.stringify(state[k], replacer) !== before) anyChange = true;
     }
   }
 
@@ -265,7 +270,9 @@ function applyRemoteData(remoteData) {
   for (const k of Object.keys(remoteData)) {
     if (LOCAL_KEYS.has(k)) continue;
     if (k === 'work' || k === 'activityLog' || k === 'payoutHistory') continue;
+    const before = JSON.stringify(state[k], replacer);
     state[k] = remoteData[k];
+    if (JSON.stringify(state[k], replacer) !== before) anyChange = true;
   }
 
   // Update snapshot for keys that are in sync - but NOT for keys that
@@ -277,7 +284,9 @@ function applyRemoteData(remoteData) {
   }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  if (onRemoteData) onRemoteData();
+
+  // Only re-render if something actually changed locally
+  if (anyChange && onRemoteData) onRemoteData();
   updateSyncBadge('Synced', true);
 
   // If local state had entries the server didn't, push them out
