@@ -1,4 +1,4 @@
-import { $, esc } from './utils.js';
+import { $, esc, safeAttr } from './utils.js';
 import { state, getRole } from './state.js';
 
 export function showModal(html) {
@@ -28,7 +28,7 @@ export function showEditEmployeeModal(empId, onSave) {
   if (!emp) return;
 
   let roleOptions = state.roles.map(r =>
-    `<option value="${r.id}" ${emp.roleId === r.id ? 'selected' : ''}>${esc(r.name)}</option>`
+    `<option value="${safeAttr(r.id)}" ${emp.roleId === r.id ? 'selected' : ''}>${esc(r.name)}</option>`
   ).join('');
 
   showModal(`
@@ -53,8 +53,8 @@ export function showEditEmployeeModal(empId, onSave) {
 
   $('editEmpCancel').onclick = hideModal;
   $('editEmpSave').onclick = () => {
-    const name = $('editEmpName').value.trim();
-    const stateId = $('editEmpStateId').value.trim();
+    const name = $('editEmpName').value.trim().slice(0, 64);
+    const stateId = $('editEmpStateId').value.trim().slice(0, 64);
     const roleId = $('editEmpRole').value;
     if (!name) return;
     emp.name = name;

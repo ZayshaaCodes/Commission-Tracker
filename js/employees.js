@@ -1,4 +1,4 @@
-import { $, money, esc } from './utils.js';
+import { $, money, esc, safeColor, safeAttr } from './utils.js';
 import { state, getRole, calcEmployeeSales, calcEmployeeCommission,
          calcEmployeeServiceCount, saveState } from './state.js';
 import { showConfirmModal, showEditEmployeeModal } from './modals.js';
@@ -37,15 +37,15 @@ export function renderEmployees() {
 
     const row = document.createElement('div');
     row.className = 'emp-row' + (emp.active ? '' : ' inactive');
-    row.style.borderLeftColor = role ? role.color : '#666';
+    row.style.borderLeftColor = safeColor(role ? role.color : '#666');
     row.innerHTML = `
       <div class="emp-row-left">
         <label class="toggle-switch" title="${emp.active ? 'Deactivate' : 'Activate'}">
-          <input type="checkbox" ${emp.active ? 'checked' : ''} data-emp-toggle="${emp.id}" />
+          <input type="checkbox" ${emp.active ? 'checked' : ''} data-emp-toggle="${safeAttr(emp.id)}" />
           <span class="toggle-slider"></span>
         </label>
         <span class="emp-row-name">${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></span>
-        <span class="role-badge" style="background:${role ? role.color : '#666'}22;color:${role ? role.color : '#888'};border-color:${role ? role.color : '#666'};">${esc(role ? role.name : 'Unknown')}</span>
+        <span class="role-badge" style="background:${safeColor(role ? role.color : '#666')}22;color:${safeColor(role ? role.color : '#888')};border-color:${safeColor(role ? role.color : '#666')};">${esc(role ? role.name : 'Unknown')}</span>
       </div>
       <div class="emp-row-stats">
         <span class="emp-row-stat"><span class="text-green">${money(sales)}</span></span>
@@ -53,8 +53,8 @@ export function renderEmployees() {
         <span class="emp-row-stat">${svcCount} svc</span>
       </div>
       <div class="emp-row-actions ec-actions">
-        <button class="btn small" data-emp-edit="${emp.id}">Edit</button>
-        <button class="btn small danger" data-emp-delete="${emp.id}">Remove</button>
+        <button class="btn small" data-emp-edit="${safeAttr(emp.id)}">Edit</button>
+        <button class="btn small danger" data-emp-delete="${safeAttr(emp.id)}">Remove</button>
       </div>
     `;
     grid.appendChild(row);

@@ -1,4 +1,4 @@
-import { $, esc } from './utils.js';
+import { $, esc, safeAttr, safeColor } from './utils.js';
 import { state, getService, saveState } from './state.js';
 import { render } from './app.js';
 
@@ -10,11 +10,11 @@ export function renderSettings() {
     const div = document.createElement('div');
     div.className = 'role-row';
     div.innerHTML = `
-      <input class="role-color-input" type="color" value="${role.color}" data-role-color="${role.id}" />
-      <input class="role-name-input" value="${esc(role.name)}" data-role-name="${role.id}" placeholder="Name" />
-      <input class="role-pct-input" type="number" value="${role.commission}" data-role-pct="${role.id}" placeholder="%" min="0" max="100" />
+      <input class="role-color-input" type="color" value="${role.color}" data-role-color="${safeAttr(role.id)}" />
+      <input class="role-name-input" value="${esc(role.name)}" data-role-name="${safeAttr(role.id)}" placeholder="Name" />
+      <input class="role-pct-input" type="number" value="${role.commission}" data-role-pct="${safeAttr(role.id)}" placeholder="%" min="0" max="100" />
       <span style="color:#a0a0a0;font-size:12px;">%</span>
-      <button class="role-delete" data-role-delete="${role.id}" title="Remove">&times;</button>
+      <button class="role-delete" data-role-delete="${safeAttr(role.id)}" title="Remove">&times;</button>
     `;
     rolesEl.appendChild(div);
   }
@@ -26,7 +26,7 @@ export function renderSettings() {
 
     if (nameInput) {
       const role = state.roles.find(r => r.id === nameInput.dataset.roleName);
-      if (role) { role.name = nameInput.value; saveState(); }
+      if (role) { role.name = nameInput.value.slice(0, 64); saveState(); }
     }
     if (pctInput) {
       const role = state.roles.find(r => r.id === pctInput.dataset.rolePct);
@@ -34,7 +34,7 @@ export function renderSettings() {
     }
     if (colorInput) {
       const role = state.roles.find(r => r.id === colorInput.dataset.roleColor);
-      if (role) { role.color = colorInput.value; saveState(); }
+      if (role) { role.color = safeColor(colorInput.value); saveState(); }
     }
   };
 
@@ -52,16 +52,16 @@ export function renderSettings() {
   for (const svc of state.services) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><input value="${esc(svc.name)}" data-svc-name="${svc.id}" style="width:100%;padding:6px 8px;font-size:13px;" /></td>
-      <td><input type="number" value="${svc.price}" data-svc-price="${svc.id}" style="width:90px;padding:6px 8px;font-size:13px;" min="0" /></td>
-      <td><input type="number" value="${svc.eventPrice ?? svc.price}" data-svc-event="${svc.id}" style="width:90px;padding:6px 8px;font-size:13px;" min="0" /></td>
+      <td><input value="${esc(svc.name)}" data-svc-name="${safeAttr(svc.id)}" style="width:100%;padding:6px 8px;font-size:13px;" /></td>
+      <td><input type="number" value="${svc.price}" data-svc-price="${safeAttr(svc.id)}" style="width:90px;padding:6px 8px;font-size:13px;" min="0" /></td>
+      <td><input type="number" value="${svc.eventPrice ?? svc.price}" data-svc-event="${safeAttr(svc.id)}" style="width:90px;padding:6px 8px;font-size:13px;" min="0" /></td>
       <td>
-        <select data-svc-cat="${svc.id}" style="padding:6px;font-size:12px;">
+        <select data-svc-cat="${safeAttr(svc.id)}" style="padding:6px;font-size:12px;">
           <option value="inventory" ${svc.category === 'inventory' ? 'selected' : ''}>Inventory</option>
           <option value="service" ${svc.category === 'service' ? 'selected' : ''}>Service</option>
         </select>
       </td>
-      <td><button class="role-delete" data-svc-delete="${svc.id}" title="Remove">&times;</button></td>
+      <td><button class="role-delete" data-svc-delete="${safeAttr(svc.id)}" title="Remove">&times;</button></td>
     `;
     svcEl.appendChild(tr);
   }
@@ -72,7 +72,7 @@ export function renderSettings() {
     const eventIn = e.target.closest('[data-svc-event]');
     const catIn = e.target.closest('[data-svc-cat]');
 
-    if (nameIn) { const s = getService(nameIn.dataset.svcName); if (s) s.name = nameIn.value; }
+    if (nameIn) { const s = getService(nameIn.dataset.svcName); if (s) s.name = nameIn.value.slice(0, 64); }
     if (priceIn) { const s = getService(priceIn.dataset.svcPrice); if (s) s.price = Math.max(0, parseFloat(priceIn.value) || 0); }
     if (eventIn) { const s = getService(eventIn.dataset.svcEvent); if (s) s.eventPrice = Math.max(0, parseFloat(eventIn.value) || 0); }
     if (catIn) { const s = getService(catIn.dataset.svcCat); if (s) s.category = catIn.value; }

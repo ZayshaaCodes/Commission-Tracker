@@ -39,7 +39,7 @@ const DEFAULT_SERVICES = [
 const DEFAULT_EMPLOYEES = [];
 
 // === PERSISTENCE ===
-export const STORAGE_KEY = shopId ? `saa_commission_tracker_${shopId}` : 'saa_commission_tracker';
+export const STORAGE_KEY = shopId ? `commission_tracker_${shopId}` : 'commission_tracker';
 export const LOCAL_KEYS = new Set(['selectedEmployeeId', 'employeeFilter']);
 
 function loadState() {

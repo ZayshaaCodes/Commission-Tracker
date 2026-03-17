@@ -1,4 +1,4 @@
-import { $, hashPasscode } from './utils.js';
+import { $, hashPasscode, verifyPasscode } from './utils.js';
 import { FIREBASE_URL } from './firebase.js';
 import { shopId } from './shop.js';
 import { showModal, hideModal } from './modals.js';
@@ -14,13 +14,15 @@ export function isUnlocked() { return accessLevel !== 'viewer'; }
 export function isOwner() { return accessLevel === 'owner'; }
 export function getAccessLevel() { return accessLevel; }
 
+const SESSION_KEY = shopId ? `ct_access_${shopId}` : 'ct_access';
+
 export function lockOut() {
   accessLevel = 'viewer';
-  sessionStorage.removeItem('saa_access');
+  sessionStorage.removeItem(SESSION_KEY);
 }
 
 export function restoreSession() {
-  const saved = sessionStorage.getItem('saa_access');
+  const saved = sessionStorage.getItem(SESSION_KEY);
   if (saved === 'owner' || saved === 'employee') {
     accessLevel = saved;
   }
@@ -54,7 +56,6 @@ export function showUnlockModal(onSuccess) {
   $('unlockSubmit').onclick = async () => {
     const code = $('unlockCode').value;
     if (!code) return;
-    const hash = hashPasscode(code);
     try {
       const [ownerRes, empRes] = await Promise.all([
         fetch(shopUrl('passcode.json')),
@@ -62,14 +63,14 @@ export function showUnlockModal(onSuccess) {
       ]);
       const ownerHash = await ownerRes.json();
       const empHash = await empRes.json();
-      if (ownerHash && hash === ownerHash) {
+      if (ownerHash && await verifyPasscode(code, ownerHash)) {
         accessLevel = 'owner';
-        sessionStorage.setItem('saa_access', 'owner');
+        sessionStorage.setItem(SESSION_KEY, 'owner');
         hideModal();
         if (onSuccess) onSuccess();
-      } else if (empHash && hash === empHash) {
+      } else if (empHash && await verifyPasscode(code, empHash)) {
         accessLevel = 'employee';
-        sessionStorage.setItem('saa_access', 'employee');
+        sessionStorage.setItem(SESSION_KEY, 'employee');
         hideModal();
         if (onSuccess) onSuccess();
       } else {
@@ -104,17 +105,18 @@ export function showSetPasscodeModal(onSuccess) {
     const code = $('newPasscode').value;
     const confirm = $('confirmPasscode').value;
     if (!code) { $('setPassError').textContent = 'Enter a passcode.'; return; }
+    if (code.length < 4) { $('setPassError').textContent = 'Passcode must be at least 4 characters.'; return; }
     if (code !== confirm) { $('setPassError').textContent = 'Passcodes do not match.'; return; }
     try {
-      const hash = hashPasscode(code);
+      const hashed = await hashPasscode(code);
       const res = await fetch(shopUrl('passcode.json'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(hash)
+        body: JSON.stringify(hashed)
       });
       if (!res.ok) throw new Error();
       accessLevel = 'owner';
-      sessionStorage.setItem('saa_access', 'owner');
+      sessionStorage.setItem(SESSION_KEY, 'owner');
       hideModal();
       if (onSuccess) onSuccess();
     } catch {
@@ -149,17 +151,18 @@ export function showChangePasscodeModal() {
     const code = $('newPasscode2').value;
     const confirm = $('confirmPasscode2').value;
     if (!old || !code) { $('changePassError').textContent = 'Fill in all fields.'; return; }
+    if (code.length < 4) { $('changePassError').textContent = 'New passcode must be at least 4 characters.'; return; }
     if (code !== confirm) { $('changePassError').textContent = 'New passcodes do not match.'; return; }
     try {
-      const oldHash = hashPasscode(old);
       const res = await fetch(shopUrl('passcode.json'));
       const stored = await res.json();
-      if (stored !== oldHash) { $('changePassError').textContent = 'Current passcode is incorrect.'; return; }
-      const newHash = hashPasscode(code);
+      const valid = await verifyPasscode(old, stored);
+      if (!valid) { $('changePassError').textContent = 'Current passcode is incorrect.'; return; }
+      const newHashed = await hashPasscode(code);
       await fetch(shopUrl('passcode.json'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newHash)
+        body: JSON.stringify(newHashed)
       });
       hideModal();
     } catch {
@@ -191,13 +194,14 @@ export function showEmployeePasscodeModal() {
     const code = $('empPasscode').value;
     const confirm = $('empPasscodeConfirm').value;
     if (!code) { $('empPassError').textContent = 'Enter a passcode.'; return; }
+    if (code.length < 4) { $('empPassError').textContent = 'Passcode must be at least 4 characters.'; return; }
     if (code !== confirm) { $('empPassError').textContent = 'Passcodes do not match.'; return; }
     try {
-      const hash = hashPasscode(code);
+      const hashed = await hashPasscode(code);
       const res = await fetch(shopUrl('employeePasscode.json'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(hash)
+        body: JSON.stringify(hashed)
       });
       if (!res.ok) throw new Error();
       hideModal();

@@ -1,4 +1,4 @@
-import { $, money, esc, timeAgo, uid } from './utils.js';
+import { $, money, esc, timeAgo, uid, safeColor } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
          calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js';
 import { renderTimeline, renderSalesChart } from './dashboard.js';
@@ -40,7 +40,7 @@ export function renderCrew() {
           const comm = calcEmployeeCommission(emp.id);
           if (gross === 0) continue;
           const role = getRole(emp.roleId);
-          lines.push({ empName: emp.name, roleId: emp.roleId, color: role ? role.color : '#666', gross, commission: comm });
+          lines.push({ empName: emp.name, roleId: emp.roleId, color: safeColor(role ? role.color : '#666'), gross, commission: comm });
         }
         if (!Array.isArray(state.payoutHistory)) state.payoutHistory = [];
         state.payoutHistory.unshift({
@@ -85,8 +85,7 @@ export function renderCrew() {
         const svc = getService(entry.serviceId);
         allEntries.push({
           empName: emp.name,
-          color: role ? role.color : '#666',
-          action: svc ? svc.name : 'Unknown',
+          color: safeColor(role ? role.color : '#666'),
           price: getServicePrice(entry.serviceId),
           timestamp: entry.timestamp
         });
@@ -95,7 +94,7 @@ export function renderCrew() {
         const svc = getService(log.serviceId);
         allEntries.push({
           empName: emp.name,
-          color: role ? role.color : '#666',
+          color: safeColor(role ? role.color : '#666'),
           action: svc ? `${svc.name} x${log.quantity}` : 'Unknown',
           price: getServicePrice(log.serviceId) * log.quantity,
           timestamp: log.timestamp
@@ -108,7 +107,7 @@ export function renderCrew() {
         if (log.type === 'clear') {
           allEntries.push({
             empName: log.empName,
-            color: log.color || '#666',
+            color: safeColor(log.color || '#666'),
             action: `Cleared — Gross: ${money(log.gross)}, Commission: ${money(log.commission)}`,
             price: 0,
             timestamp: log.timestamp,

@@ -1,4 +1,4 @@
-import { $, money, esc, toGMT8, timeAgo } from './utils.js';
+import { $, money, esc, toGMT8, timeAgo, safeColor, safeAttr } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
          calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
 import { isUnlocked, getAccessLevel } from './auth.js';
@@ -148,14 +148,14 @@ export function renderDashboard() {
     tr.dataset.tipHtml = tipHtml || '<div class="muted">No services logged</div>';
     const canActivate = !emp.active && isUnlocked();
     tr.innerHTML = `
-      <td style="font-weight:600;">${emp.active ? `<span class="dash-emp-link" data-emp-id="${emp.id}">` : '<span>'}${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></span></td>
-      <td><span class="role-badge" style="background:${role ? role.color : '#666'}22;color:${role ? role.color : '#888'};border-color:${role ? role.color : '#666'};">${esc(role ? role.name : 'Unknown')}</span></td>
+      <td style="font-weight:600;">${emp.active ? `<span class="dash-emp-link" data-emp-id="${safeAttr(emp.id)}">` : '<span>'}${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></span></td>
+      <td><span class="role-badge" style="background:${safeColor(role ? role.color : '#666')}22;color:${safeColor(role ? role.color : '#888')};border-color:${safeColor(role ? role.color : '#666')};">${esc(role ? role.name : 'Unknown')}</span></td>
       <td>${svcCount}</td>
       <td class="text-green">${money(sales)}</td>
       <td class="text-amber">${money(comm)}</td>
       <td class="text-blue">${money(net)}</td>
       <td>${canActivate
-        ? `<button class="btn small success activate-btn" data-activate="${emp.id}">Activate</button>`
+        ? `<button class="btn small success activate-btn" data-activate="${safeAttr(emp.id)}">Activate</button>`
         : `<span class="badge ${emp.active ? 'active' : 'inactive'}">${emp.active ? 'Active' : 'Inactive'}</span>`
       }</td>
     `;
@@ -218,7 +218,7 @@ export function renderTimeline() {
     if (!emp.active) continue;
     const work = getEmployeeWork(emp.id);
     const role = getRole(emp.roleId);
-    const color = role ? role.color : '#666';
+    const color = role ? safeColor(role.color) : '#666';
     for (const entry of work.entries) {
       allEntries.push({ timestamp: entry.timestamp, serviceId: entry.serviceId, color });
     }
@@ -286,7 +286,7 @@ export function renderSalesChart(activeEmps) {
     .map(emp => ({
       name: emp.name,
       sales: calcEmployeeSales(emp.id),
-      color: (getRole(emp.roleId) || {}).color || '#666'
+      color: safeColor((getRole(emp.roleId) || {}).color || '#666')
     }))
     .sort((a, b) => b.sales - a.sales);
 

@@ -1,4 +1,4 @@
-import { $, money, uid, esc, timeAgo } from './utils.js';
+import { $, money, uid, esc, timeAgo, safeColor, safeAttr } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
          calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js';
 import { getAccessLevel } from './auth.js';
@@ -16,7 +16,7 @@ export function renderCommissions() {
       const item = document.createElement('button');
       item.className = 'emp-dropdown-item' + (state.selectedEmployeeId === emp.id ? ' selected' : '');
       item.innerHTML = `
-        <span class="emp-pill-dot" style="background:${role ? role.color : '#666'};"></span>
+        <span class="emp-pill-dot" style="background:${safeColor(role ? role.color : '#666')};"></span>
         ${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span>
       `;
       item.onclick = (e) => {
@@ -107,7 +107,7 @@ export function renderCommissions() {
     <span class="work-emp-name">${esc(emp.name)}</span>
     <span class="state-id-sep">|</span>
     <span class="work-emp-id">${esc(emp.stateId)}</span>
-    ${role ? `<span class="role-badge" style="background:${role.color}22;color:${role.color};border-color:${role.color};">${esc(role.name)}</span>` : ''}
+    ${role ? `<span class="role-badge" style="background:${safeColor(role.color)}22;color:${safeColor(role.color)};border-color:${safeColor(role.color)};">${esc(role.name)}</span>` : ''}
     <span class="emp-dropdown-arrow">&#9662;</span>
   `;
 
@@ -125,9 +125,9 @@ export function renderCommissions() {
       <span class="counter-name">${esc(svc.name)}</span>
       <span class="counter-price">${money(price)}</span>
       <div class="counter-controls">
-        <button class="counter-btn minus" data-svc="${svc.id}" data-dir="-1">&minus;</button>
+        <button class="counter-btn minus" data-svc="${safeAttr(svc.id)}" data-dir="-1">&minus;</button>
         <span class="counter-value${qty > 0 ? ' has-value' : ''}">${qty}</span>
-        <button class="counter-btn plus" data-svc="${svc.id}" data-dir="1">+</button>
+        <button class="counter-btn plus" data-svc="${safeAttr(svc.id)}" data-dir="1">+</button>
       </div>
     `;
     countersEl.appendChild(div);

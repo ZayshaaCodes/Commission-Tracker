@@ -47,10 +47,54 @@ export function importJson(file, onComplete) {
   reader.onload = (e) => {
     try {
       const data = JSON.parse(e.target.result);
-      if (!data.employees || !data.services || !data.roles) {
+      if (!Array.isArray(data.employees) || !Array.isArray(data.services) || !Array.isArray(data.roles)) {
         alert('Invalid data file format.');
         return;
       }
+
+      // Whitelist allowed top-level keys
+      const ALLOWED = new Set([
+        'employees', 'services', 'roles', 'work', 'eventMode',
+        'selectedEmployeeId', 'employeeFilter', 'activityLog', 'payoutHistory'
+      ]);
+      for (const key of Object.keys(data)) {
+        if (!ALLOWED.has(key)) delete data[key];
+      }
+
+      // Validate roles
+      data.roles = data.roles.filter(r =>
+        r && typeof r.id === 'string' && r.id.length <= 64 &&
+        typeof r.name === 'string' && r.name.length <= 64 &&
+        /^#[0-9a-fA-F]{3,8}$/.test(r.color)
+      ).map(r => ({
+        id: r.id, name: r.name.slice(0, 64),
+        commission: Math.max(0, Math.min(100, Number(r.commission) || 0)),
+        color: r.color
+      }));
+
+      // Validate employees
+      data.employees = data.employees.filter(emp =>
+        emp && typeof emp.id === 'string' && emp.id.length <= 64 &&
+        typeof emp.name === 'string' && emp.name.length <= 64
+      ).map(emp => ({
+        id: emp.id, name: emp.name.slice(0, 64),
+        stateId: String(emp.stateId || '').slice(0, 64),
+        roleId: String(emp.roleId || ''),
+        active: !!emp.active,
+        joinDate: Number(emp.joinDate) || Date.now()
+      }));
+
+      // Validate services
+      data.services = data.services.filter(s =>
+        s && typeof s.id === 'string' && s.id.length <= 64 &&
+        typeof s.name === 'string' && s.name.length <= 64
+      ).map(s => ({
+        id: s.id, name: s.name.slice(0, 64),
+        price: Math.max(0, Number(s.price) || 0),
+        eventPrice: Math.max(0, Number(s.eventPrice) || 0),
+        category: s.category === 'inventory' ? 'inventory' : 'service'
+      }));
+
       Object.assign(state, data);
       saveState();
       if (onComplete) onComplete();

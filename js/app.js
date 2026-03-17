@@ -1,4 +1,4 @@
-import { $, uid } from './utils.js';
+import { $, uid, esc, safeColor } from './utils.js';
 import { state, STORAGE_KEY, saveState, getRole, calcEmployeeSales, calcEmployeeCommission } from './state.js';
 import { FIREBASE_URL, loadFromFirebase, pushToFirebase, markInitialLoadDone,
          onRemoteUpdate, startStreaming, migrateLegacyData } from './firebase.js';
@@ -106,8 +106,8 @@ async function init() {
 
   // Add employee
   $('addEmployeeBtn').onclick = () => {
-    const name = $('newEmpName').value.trim();
-    const stateId = $('newEmpStateId').value.trim();
+    const name = $('newEmpName').value.trim().slice(0, 64);
+    const stateId = $('newEmpStateId').value.trim().slice(0, 64);
     const roleId = $('newEmpRole').value;
     if (!name) return;
 
@@ -156,7 +156,7 @@ async function init() {
         id: uid(),
         type: 'clear',
         empName: emp.name,
-        color: role ? role.color : '#666',
+        color: safeColor(role ? role.color : '#666'),
         gross,
         commission: comm,
         timestamp: Date.now()
@@ -275,47 +275,60 @@ init().catch(err => {
 
 // === SHOP PICKER ===
 import { getShopUrl } from './shop.js';
+import { hashPasscode as hashAdmin, verifyPasscode as verifyAdmin, generateCode } from './utils.js';
 
 async function initShopPicker() {
-  const listEl = $('shopList');
   const nameInput = $('newShopName');
+  const codeInput = $('shopInviteCode');
   const createBtn = $('createShopBtn');
   const errorEl = $('shopCreateError');
 
-  // Load registered shops from Firebase
+  // Auto-register Dreamworks if legacy root data exists but no shop entry yet
   try {
     const res = await fetch(FIREBASE_URL + '/shops.json');
-    const data = await res.json();
-    if (data && typeof data === 'object') {
-      const shopIds = Object.keys(data).sort();
-      for (const id of shopIds) {
-        const a = document.createElement('a');
-        a.className = 'shop-list-item';
-        a.href = getShopUrl(id);
-        a.textContent = data[id].name || id;
-        listEl.appendChild(a);
+    let data = await res.json();
+    if (!data || !data.dreamworks) {
+      const legacyRes = await fetch(FIREBASE_URL + '/state.json');
+      const legacyData = await legacyRes.json();
+      if (legacyData) {
+        await fetch(FIREBASE_URL + '/shops/dreamworks.json', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'Dreamworks Customs', created: Date.now() })
+        });
       }
     }
-  } catch { /* offline — show empty */ }
+  } catch { /* offline */ }
 
-  if (!listEl.children.length) {
-    listEl.innerHTML = '<div class="shop-list-empty">No shops registered yet</div>';
-  }
-
-  // Create new shop
+  // Create new shop (requires invite code)
   createBtn.onclick = async () => {
     const raw = nameInput.value.trim();
+    const code = codeInput.value.trim().toUpperCase();
     if (!raw) { errorEl.textContent = 'Enter a shop name.'; return; }
+    if (!code) { errorEl.textContent = 'Enter an invite code.'; return; }
     const slug = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     if (!slug || slug.length < 2) { errorEl.textContent = 'Name must be at least 2 characters (letters/numbers).'; return; }
     if (slug.length > 48) { errorEl.textContent = 'Name is too long.'; return; }
     errorEl.textContent = '';
 
     try {
+      // Validate invite code
+      const codeRes = await fetch(FIREBASE_URL + '/inviteCodes/' + encodeURIComponent(code) + '.json');
+      const codeData = await codeRes.json();
+      if (!codeData) { errorEl.textContent = 'Invalid invite code.'; return; }
+      if (codeData.usedBy) { errorEl.textContent = 'This invite code has already been used.'; return; }
+
       // Check if shop already exists
       const check = await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(slug) + '.json');
       const existing = await check.json();
       if (existing) { errorEl.textContent = 'A shop with that name already exists.'; return; }
+
+      // Mark invite code as used
+      await fetch(FIREBASE_URL + '/inviteCodes/' + encodeURIComponent(code) + '.json', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usedBy: slug, usedAt: Date.now() })
+      });
 
       // Register the shop
       await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(slug) + '.json', {
@@ -332,4 +345,91 @@ async function initShopPicker() {
   };
 
   nameInput.onkeydown = (e) => { if (e.key === 'Enter') createBtn.click(); };
+  codeInput.onkeydown = (e) => { if (e.key === 'Enter') createBtn.click(); };
+
+  // === ADMIN PANEL ===
+  const adminToggle = $('adminToggleBtn');
+  const adminPanel = $('adminPanel');
+  const adminLoginArea = $('adminLoginArea');
+  const adminControls = $('adminControls');
+  const adminPassInput = $('adminPasscode');
+  const adminLoginBtn = $('adminLoginBtn');
+  const adminError = $('adminError');
+  const generateBtn = $('generateCodeBtn');
+  const codeDisplay = $('generatedCodeDisplay');
+  const codeText = $('generatedCodeText');
+  const codeListEl = $('inviteCodeList');
+
+  adminToggle.onclick = () => {
+    adminPanel.style.display = adminPanel.style.display === 'none' ? '' : 'none';
+  };
+
+  adminLoginBtn.onclick = async () => {
+    const pass = adminPassInput.value;
+    if (!pass) { adminError.textContent = 'Enter admin passcode.'; return; }
+    adminError.textContent = '';
+
+    try {
+      const res = await fetch(FIREBASE_URL + '/admin/passcode.json');
+      const stored = await res.json();
+
+      if (!stored) {
+        // First time — set admin passcode
+        const hashed = await hashAdmin(pass);
+        await fetch(FIREBASE_URL + '/admin/passcode.json', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(hashed)
+        });
+        adminLoginArea.style.display = 'none';
+        adminControls.style.display = '';
+        loadInviteCodes();
+        return;
+      }
+
+      const valid = await verifyAdmin(pass, stored);
+      if (!valid) { adminError.textContent = 'Incorrect passcode.'; return; }
+
+      adminLoginArea.style.display = 'none';
+      adminControls.style.display = '';
+      loadInviteCodes();
+    } catch {
+      adminError.textContent = 'Connection error.';
+    }
+  };
+
+  adminPassInput.onkeydown = (e) => { if (e.key === 'Enter') adminLoginBtn.click(); };
+
+  generateBtn.onclick = async () => {
+    const newCode = generateCode();
+    try {
+      await fetch(FIREBASE_URL + '/inviteCodes/' + encodeURIComponent(newCode) + '.json', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ created: Date.now(), usedBy: null })
+      });
+      codeText.textContent = newCode;
+      codeDisplay.style.display = '';
+      loadInviteCodes();
+    } catch {
+      adminError.textContent = 'Failed to generate code.';
+    }
+  };
+
+  async function loadInviteCodes() {
+    try {
+      const res = await fetch(FIREBASE_URL + '/inviteCodes.json');
+      const data = await res.json();
+      codeListEl.innerHTML = '';
+      if (!data) return;
+      const codes = Object.entries(data).sort((a, b) => (b[1].created || 0) - (a[1].created || 0));
+      for (const [code, info] of codes) {
+        const div = document.createElement('div');
+        div.className = 'invite-code-item' + (info.usedBy ? ' used' : '');
+        const statusText = info.usedBy ? `Used by ${info.usedBy}` : 'Available';
+        div.innerHTML = `<span class="code">${esc(code)}</span><span class="status">${esc(statusText)}</span>`;
+        codeListEl.appendChild(div);
+      }
+    } catch { /* offline */ }
+  }
 }
