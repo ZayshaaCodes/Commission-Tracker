@@ -1,14 +1,32 @@
 /* ===================== SETTINGS ===================== */
-.settings-grid {
+
+/* Full-width panels */
+.settings-full {
+  margin-bottom: 12px;
+}
+
+/* Two-column layout: left stack + right services */
+.settings-two-col {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: start;
+}
+
+.settings-left-stack {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
-@media (max-width: 800px) {
-  .settings-grid { grid-template-columns: 1fr; }
+@media (max-width: 900px) {
+  .settings-two-col {
+    grid-template-columns: 1fr;
+  }
 }
 
+/* Role rows */
 .role-row {
   display: flex;
   align-items: center;
@@ -45,19 +63,7 @@
 
 .role-row .role-delete:hover { background: rgba(248,113,113,0.15); }
 
-.sheets-config { display: flex; flex-direction: column; gap: 8px; }
-
 /* Shop Branding */
-.settings-panel-wide {
-  grid-column: 1 / -1;
-}
-
-.branding-config {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 .branding-row {
   display: flex;
   gap: 24px;
@@ -112,4 +118,39 @@
 .branding-logo-actions {
   display: flex;
   gap: 6px;
+}
+
+/* System panel (stacked in left column) */
+.system-sections-stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.system-sections-stacked h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a0a0a0;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.system-section-stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid #3a3a3a;
+}
+
+.system-section-stacked:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.system-btn-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }

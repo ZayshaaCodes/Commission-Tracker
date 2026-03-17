@@ -1,5 +1,5 @@
 import { $, money, uid, esc, timeAgo, safeColor, safeAttr } from './utils.js';
-import { state, getRole, getService, getServicePrice, getEmployeeWork,
+import { state, getRole, getService, getServiceGroup, getServicePrice, getEmployeeWork,
          calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js';
 import { getAccessLevel } from './auth.js';
 import { flushSync } from './firebase.js';
@@ -172,30 +172,28 @@ export function renderCommissions() {
     flushSync();
   };
 
-  // Service buttons - grouped by price tier
+  // Service buttons - grouped by user-defined service groups
   const logServices = state.services.filter(s => s.category === 'service');
   const svcBtnsEl = $('serviceButtons');
   svcBtnsEl.innerHTML = '';
 
-  const groups = [
-    { label: 'Government', color: '#6b7280', test: p => p === 0 },
-    { label: 'Services',   color: '#3b82f6', test: p => p > 0 && p <= 1000 },
-    { label: 'Upgrades',   color: '#a855f7', test: p => p > 1000 && p <= 5000 },
-    { label: 'Packages',   color: '#f59e0b', test: p => p > 5000 }
-  ];
+  // Sort groups by sortOrder then render each
+  const sortedGroups = [...state.serviceGroups].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
-  for (const group of groups) {
-    const groupSvcs = logServices.filter(s => group.test(s.price));
+  for (const group of sortedGroups) {
+    const groupSvcs = logServices.filter(s => s.group === group.id);
     if (groupSvcs.length === 0) continue;
+
+    const color = safeColor(group.color || '#888');
 
     const row = document.createElement('div');
     row.className = 'svc-row';
 
     const label = document.createElement('div');
     label.className = 'svc-row-label';
-    label.style.borderLeftColor = group.color;
-    label.style.color = group.color;
-    label.textContent = group.label;
+    label.style.borderLeftColor = color;
+    label.style.color = color;
+    label.textContent = group.name;
     row.appendChild(label);
 
     const wrap = document.createElement('div');
@@ -205,8 +203,46 @@ export function renderCommissions() {
       const price = getServicePrice(svc.id);
       const btn = document.createElement('button');
       btn.className = 'service-btn';
-      btn.style.borderColor = group.color + '55';
-      btn.style.backgroundColor = group.color + '12';
+      btn.style.borderColor = color + '55';
+      btn.style.backgroundColor = color + '12';
+      btn.innerHTML = `<span class="svc-name">${esc(svc.name)}</span><span class="svc-price">${money(price)}</span>`;
+      btn.onclick = () => {
+        const w = getEmployeeWork(state.selectedEmployeeId);
+        w.entries.push({ id: uid(), serviceId: svc.id, timestamp: Date.now() });
+        renderCommissions();
+        saveState();
+        flushSync();
+      };
+      wrap.appendChild(btn);
+    }
+
+    row.appendChild(wrap);
+    svcBtnsEl.appendChild(row);
+  }
+
+  // Ungrouped services (no group set, or group was deleted)
+  const groupedIds = new Set(state.serviceGroups.map(g => g.id));
+  const ungrouped = logServices.filter(s => !s.group || !groupedIds.has(s.group));
+  if (ungrouped.length > 0) {
+    const row = document.createElement('div');
+    row.className = 'svc-row';
+
+    const label = document.createElement('div');
+    label.className = 'svc-row-label';
+    label.style.borderLeftColor = '#888';
+    label.style.color = '#888';
+    label.textContent = 'Ungrouped';
+    row.appendChild(label);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'svc-row-btns';
+
+    for (const svc of ungrouped) {
+      const price = getServicePrice(svc.id);
+      const btn = document.createElement('button');
+      btn.className = 'service-btn';
+      btn.style.borderColor = '#88888855';
+      btn.style.backgroundColor = '#88888812';
       btn.innerHTML = `<span class="svc-name">${esc(svc.name)}</span><span class="svc-price">${money(price)}</span>`;
       btn.onclick = () => {
         const w = getEmployeeWork(state.selectedEmployeeId);

@@ -1,5 +1,5 @@
 import { $, esc, safeAttr, safeColor } from './utils.js';
-import { state, getService, saveState } from './state.js';
+import { state, getService, getServiceGroup, saveState } from './state.js';
 import { render, applyBranding } from './app.js';
 
 const MAX_LOGO_BYTES = 256 * 1024;
@@ -106,6 +106,13 @@ export function renderSettings() {
   // Services
   const svcEl = $('servicesEditor');
   svcEl.innerHTML = '';
+
+  // Build group options for dropdown
+  const groupOptions = state.serviceGroups
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map(g => `<option value="${safeAttr(g.id)}">${esc(g.name)}</option>`)
+    .join('');
+
   for (const svc of state.services) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -118,8 +125,17 @@ export function renderSettings() {
           <option value="service" ${svc.category === 'service' ? 'selected' : ''}>Service</option>
         </select>
       </td>
+      <td>
+        <select data-svc-group="${safeAttr(svc.id)}" style="padding:6px;font-size:12px;">
+          <option value="" ${!svc.group ? 'selected' : ''}>None</option>
+          ${groupOptions}
+        </select>
+      </td>
       <td><button class="role-delete" data-svc-delete="${safeAttr(svc.id)}" title="Remove">&times;</button></td>
     `;
+    // Set group dropdown value after building (handles ids with special chars)
+    const groupSelect = tr.querySelector(`[data-svc-group]`);
+    if (groupSelect && svc.group) groupSelect.value = svc.group;
     svcEl.appendChild(tr);
   }
 
@@ -128,11 +144,13 @@ export function renderSettings() {
     const priceIn = e.target.closest('[data-svc-price]');
     const eventIn = e.target.closest('[data-svc-event]');
     const catIn = e.target.closest('[data-svc-cat]');
+    const groupIn = e.target.closest('[data-svc-group]');
 
     if (nameIn) { const s = getService(nameIn.dataset.svcName); if (s) s.name = nameIn.value.slice(0, 64); }
     if (priceIn) { const s = getService(priceIn.dataset.svcPrice); if (s) s.price = Math.max(0, parseFloat(priceIn.value) || 0); }
     if (eventIn) { const s = getService(eventIn.dataset.svcEvent); if (s) s.eventPrice = Math.max(0, parseFloat(eventIn.value) || 0); }
     if (catIn) { const s = getService(catIn.dataset.svcCat); if (s) s.category = catIn.value; }
+    if (groupIn) { const s = getService(groupIn.dataset.svcGroup); if (s) s.group = groupIn.value; }
     saveState();
   };
 
@@ -147,4 +165,56 @@ export function renderSettings() {
   // Branding
   bindBranding();
   renderBrandingUI();
+
+  // Service Groups
+  renderGroups();
+}
+
+function renderGroups() {
+  const el = $('groupsEditor');
+  if (!el) return;
+  el.innerHTML = '';
+
+  const sorted = [...state.serviceGroups].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+  for (const grp of sorted) {
+    const count = state.services.filter(s => s.group === grp.id).length;
+    const div = document.createElement('div');
+    div.className = 'role-row';
+    div.innerHTML = `
+      <input class="role-color-input" type="color" value="${safeColor(grp.color)}" data-grp-color="${safeAttr(grp.id)}" />
+      <input class="role-name-input" value="${esc(grp.name)}" data-grp-name="${safeAttr(grp.id)}" placeholder="Group name" />
+      <input class="role-pct-input" type="number" value="${grp.sortOrder ?? 0}" data-grp-order="${safeAttr(grp.id)}" title="Sort order" min="0" max="999" style="width:50px;" />
+      <span style="color:#a0a0a0;font-size:11px;white-space:nowrap;">${count} svc</span>
+      <button class="role-delete" data-grp-delete="${safeAttr(grp.id)}" title="Remove">&times;</button>
+    `;
+    el.appendChild(div);
+  }
+
+  el.onchange = (e) => {
+    const nameIn = e.target.closest('[data-grp-name]');
+    const colorIn = e.target.closest('[data-grp-color]');
+    const orderIn = e.target.closest('[data-grp-order]');
+
+    if (nameIn) {
+      const g = getServiceGroup(nameIn.dataset.grpName);
+      if (g) { g.name = nameIn.value.slice(0, 48); saveState(); }
+    }
+    if (colorIn) {
+      const g = getServiceGroup(colorIn.dataset.grpColor);
+      if (g) { g.color = safeColor(colorIn.value); saveState(); }
+    }
+    if (orderIn) {
+      const g = getServiceGroup(orderIn.dataset.grpOrder);
+      if (g) { g.sortOrder = Math.max(0, parseInt(orderIn.value) || 0); saveState(); }
+    }
+  };
+
+  el.onclick = (e) => {
+    const del = e.target.closest('[data-grp-delete]');
+    if (del) {
+      state.serviceGroups = state.serviceGroups.filter(g => g.id !== del.dataset.grpDelete);
+      render();
+    }
+  };
 }

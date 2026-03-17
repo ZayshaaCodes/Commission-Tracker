@@ -186,7 +186,15 @@ async function init() {
   // Settings: Add service
   $('addServiceBtn').onclick = () => {
     const newId = 'svc_' + Date.now();
-    state.services.push({ id: newId, name: 'New Service', price: 0, eventPrice: 0, category: 'service' });
+    state.services.push({ id: newId, name: 'New Service', price: 0, eventPrice: 0, category: 'service', group: '' });
+    render();
+  };
+
+  // Settings: Add service group
+  $('addGroupBtn').onclick = () => {
+    const newId = 'grp_' + Date.now();
+    const maxOrder = state.serviceGroups.reduce((m, g) => Math.max(m, g.sortOrder ?? 0), -1);
+    state.serviceGroups.push({ id: newId, name: 'New Group', color: '#888888', sortOrder: maxOrder + 1 });
     render();
   };
 

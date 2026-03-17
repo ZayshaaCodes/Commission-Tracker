@@ -214,68 +214,99 @@
 
   <!-- ===================== SETTINGS ===================== -->
   <div id="settingsTab" class="tab-content">
-    <div class="settings-grid">
-      <!-- Shop Branding -->
-      <div class="panel settings-panel-wide">
-        <div class="panel-header">
-          <h2>Shop Branding</h2>
+    <!-- Row 1: Shop Branding -->
+    <div class="panel settings-full">
+      <div class="panel-header"><h2>Shop Branding</h2></div>
+      <div class="branding-row">
+        <div class="branding-logo-section">
+          <label class="branding-label">Header Logo</label>
+          <div class="branding-logo-preview-wrap">
+            <img id="logoPreview" class="branding-logo-preview" src="Logo_a_ds.png" alt="Logo preview" />
+          </div>
+          <div class="branding-logo-actions">
+            <button class="btn small" id="uploadLogoBtn">Upload Logo</button>
+            <button class="btn small danger" id="removeLogoBtn" style="display:none;">Remove</button>
+            <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;" />
+          </div>
+          <span class="muted">PNG, JPG, WebP, or SVG. Max 256 KB.</span>
         </div>
-        <div class="branding-config">
-          <div class="branding-row">
-            <div class="branding-logo-section">
-              <label class="branding-label">Header Logo</label>
-              <div class="branding-logo-preview-wrap">
-                <img id="logoPreview" class="branding-logo-preview" src="Logo_a_ds.png" alt="Logo preview" />
-              </div>
-              <div class="branding-logo-actions">
-                <button class="btn small" id="uploadLogoBtn">Upload Logo</button>
-                <button class="btn small danger" id="removeLogoBtn" style="display:none;">Remove</button>
-                <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;" />
-              </div>
-              <span class="muted">PNG, JPG, WebP, or SVG. Max 256 KB. Shown in the header.</span>
+        <div class="branding-name-section">
+          <label class="branding-label" for="shopDisplayName">Shop Name</label>
+          <input id="shopDisplayName" type="text" placeholder="My Shop" maxlength="48" />
+          <span class="muted">Used in the browser tab and header</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Two-column — Left stack / Right service pricing -->
+    <div class="settings-two-col">
+      <div class="settings-left-stack">
+        <!-- General -->
+        <div class="panel">
+          <div class="panel-header"><h2>General</h2></div>
+          <div class="control-group">
+            <label for="eventModeToggle">Event Mode</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="eventModeToggle" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="muted">Uses event pricing for services when enabled</span>
+          </div>
+        </div>
+
+        <!-- Commission Rates -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Commission Rates</h2>
+            <div class="panel-actions"><button class="btn small" id="addRoleBtn">+ Role</button></div>
+          </div>
+          <div id="rolesEditor"></div>
+        </div>
+
+        <!-- Service Groups -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Service Groups</h2>
+            <div class="panel-actions"><button class="btn small" id="addGroupBtn">+ Group</button></div>
+          </div>
+          <div id="groupsEditor"></div>
+        </div>
+
+        <!-- System -->
+        <div class="panel">
+          <div class="panel-header"><h2>System</h2></div>
+          <div class="system-sections-stacked">
+            <div class="system-section-stacked">
+              <h3>Firebase Sync</h3>
+              <div class="muted" id="firebaseStatus">All data is automatically synced to Firebase.</div>
+              <button class="btn" id="firebaseForceSync">Force Sync Now</button>
             </div>
-            <div class="branding-name-section">
-              <label class="branding-label" for="shopDisplayName">Shop Name</label>
-              <input id="shopDisplayName" type="text" placeholder="My Shop" maxlength="48" />
-              <span class="muted">Used in the browser tab and header area</span>
+            <div class="system-section-stacked">
+              <h3>Access Control</h3>
+              <div class="muted">Owners: full access. Employees: log services. Viewers: read-only.</div>
+              <div class="system-btn-row">
+                <button class="btn" id="changePasscodeBtn">Change Owner Passcode</button>
+                <button class="btn" id="changeEmpPasscodeBtn">Set Employee Passcode</button>
+              </div>
+            </div>
+            <div class="system-section-stacked">
+              <h3>Data</h3>
+              <div class="system-btn-row">
+                <button class="btn" id="exportJsonBtn">Export JSON</button>
+                <button class="btn" id="importJsonBtn">Import JSON</button>
+                <input type="file" id="importJsonFile" accept=".json" style="display:none;" />
+              </div>
+              <button class="btn danger" id="resetAllBtn">Reset All Data</button>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- General -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2>General</h2>
-        </div>
-        <div class="control-group">
-          <label for="eventModeToggle">Event Mode</label>
-          <label class="toggle-switch">
-            <input type="checkbox" id="eventModeToggle" />
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="muted">Uses event pricing for services when enabled</span>
-        </div>
-      </div>
-
-      <!-- Commission Rates -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2>Commission Rates</h2>
-          <div class="panel-actions">
-            <button class="btn small" id="addRoleBtn">+ Role</button>
-          </div>
-        </div>
-        <div id="rolesEditor"></div>
       </div>
 
       <!-- Service Pricing -->
-      <div class="panel">
+      <div class="panel settings-services-panel">
         <div class="panel-header">
           <h2>Service Pricing</h2>
-          <div class="panel-actions">
-            <button class="btn small" id="addServiceBtn">+ Service</button>
-          </div>
+          <div class="panel-actions"><button class="btn small" id="addServiceBtn">+ Service</button></div>
         </div>
         <div class="table-wrap">
           <table>
@@ -285,51 +316,12 @@
                 <th>Price</th>
                 <th>Event Price</th>
                 <th>Category</th>
+                <th>Group</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="servicesEditor"></tbody>
           </table>
-        </div>
-      </div>
-
-      <!-- Firebase Sync Status -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2>Firebase Sync</h2>
-        </div>
-        <div class="sheets-config">
-          <div class="muted" id="firebaseStatus">All data is automatically synced to Firebase.</div>
-          <div class="control-group" style="gap:8px;margin-top:8px;">
-            <button class="btn" id="firebaseForceSync">Force Sync Now</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Access Control -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2>Access Control</h2>
-        </div>
-        <div class="sheets-config">
-          <div class="muted">Owners get full access. Employees can log services but can't change settings. Viewers are read-only.</div>
-          <div class="control-group" style="gap:8px;margin-top:8px;">
-            <button class="btn" id="changePasscodeBtn">Change Owner Passcode</button>
-            <button class="btn" id="changeEmpPasscodeBtn">Set Employee Passcode</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Data Management -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2>Data Management</h2>
-        </div>
-        <div class="control-group" style="gap:8px;">
-          <button class="btn" id="exportJsonBtn">Export JSON</button>
-          <button class="btn" id="importJsonBtn">Import JSON</button>
-          <input type="file" id="importJsonFile" accept=".json" style="display:none;" />
-          <button class="btn danger" id="resetAllBtn">Reset All Data</button>
         </div>
       </div>
     </div>
