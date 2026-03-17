@@ -8,13 +8,13 @@
   <title>Commission Tracker</title>
   <link rel="icon" href="data:," />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://dreamworks-commission-default-rtdb.firebaseio.com; img-src 'self' data:;" />
-  <link rel="stylesheet" href="css/global.css?v=20260316">
-  <link rel="stylesheet" href="css/dashboard.css?v=20260316">
-  <link rel="stylesheet" href="css/commissions.css?v=20260316">
-  <link rel="stylesheet" href="css/employees.css?v=20260316">
-  <link rel="stylesheet" href="css/settings.css?v=20260316">
-  <link rel="stylesheet" href="css/stats.css?v=20260316">
-  <link rel="stylesheet" href="css/responsive.css?v=20260316">
+  <link rel="stylesheet" href="css/global.css?v=20260317">
+  <link rel="stylesheet" href="css/dashboard.css?v=20260317">
+  <link rel="stylesheet" href="css/commissions.css?v=20260317">
+  <link rel="stylesheet" href="css/employees.css?v=20260317">
+  <link rel="stylesheet" href="css/settings.css?v=20260317">
+  <link rel="stylesheet" href="css/stats.css?v=20260317">
+  <link rel="stylesheet" href="css/responsive.css?v=20260317">
 </head>
 <body>
   <!-- Loading overlay -->
@@ -215,6 +215,34 @@
   <!-- ===================== SETTINGS ===================== -->
   <div id="settingsTab" class="tab-content">
     <div class="settings-grid">
+      <!-- Shop Branding -->
+      <div class="panel settings-panel-wide">
+        <div class="panel-header">
+          <h2>Shop Branding</h2>
+        </div>
+        <div class="branding-config">
+          <div class="branding-row">
+            <div class="branding-logo-section">
+              <label class="branding-label">Header Logo</label>
+              <div class="branding-logo-preview-wrap">
+                <img id="logoPreview" class="branding-logo-preview" src="Logo_a_ds.png" alt="Logo preview" />
+              </div>
+              <div class="branding-logo-actions">
+                <button class="btn small" id="uploadLogoBtn">Upload Logo</button>
+                <button class="btn small danger" id="removeLogoBtn" style="display:none;">Remove</button>
+                <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;" />
+              </div>
+              <span class="muted">PNG, JPG, WebP, or SVG. Max 256 KB. Shown in the header.</span>
+            </div>
+            <div class="branding-name-section">
+              <label class="branding-label" for="shopDisplayName">Shop Name</label>
+              <input id="shopDisplayName" type="text" placeholder="My Shop" maxlength="48" />
+              <span class="muted">Used in the browser tab and header area</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- General -->
       <div class="panel">
         <div class="panel-header">
@@ -316,6 +344,6 @@
   </div>
   </div><!-- /appRoot -->
 
-  <script type="module" src="js/app.js?v=20260316"></script>
+  <script type="module" src="js/app.js?v=20260317"></script>
 </body>
 </html>

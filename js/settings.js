@@ -1,6 +1,63 @@
 import { $, esc, safeAttr, safeColor } from './utils.js';
 import { state, getService, saveState } from './state.js';
-import { render } from './app.js';
+import { render, applyBranding } from './app.js';
+
+const MAX_LOGO_BYTES = 256 * 1024;
+let brandingBound = false;
+
+function bindBranding() {
+  if (brandingBound) return;
+  brandingBound = true;
+
+  const fileInput = $('logoFileInput');
+  const uploadBtn = $('uploadLogoBtn');
+  const removeBtn = $('removeLogoBtn');
+  const nameInput = $('shopDisplayName');
+
+  uploadBtn.onclick = () => fileInput.click();
+
+  fileInput.onchange = () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    if (file.size > MAX_LOGO_BYTES) {
+      alert('Logo must be under 256 KB.');
+      fileInput.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      state.shopLogo = reader.result;
+      saveState();
+      applyBranding();
+      renderBrandingUI();
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  };
+
+  removeBtn.onclick = () => {
+    state.shopLogo = '';
+    saveState();
+    applyBranding();
+    renderBrandingUI();
+  };
+
+  nameInput.onchange = () => {
+    state.shopName = nameInput.value.trim().slice(0, 48);
+    saveState();
+    applyBranding();
+  };
+}
+
+function renderBrandingUI() {
+  const preview = $('logoPreview');
+  const removeBtn = $('removeLogoBtn');
+  const nameInput = $('shopDisplayName');
+
+  preview.src = state.shopLogo || 'Logo_a_ds.png';
+  removeBtn.style.display = state.shopLogo ? '' : 'none';
+  nameInput.value = state.shopName || '';
+}
 
 export function renderSettings() {
   // Roles
@@ -86,4 +143,8 @@ export function renderSettings() {
       render();
     }
   };
+
+  // Branding
+  bindBranding();
+  renderBrandingUI();
 }

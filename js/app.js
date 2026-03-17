@@ -28,6 +28,15 @@ function switchTab(tab) {
   render();
 }
 
+// === BRANDING ===
+export function applyBranding() {
+  const logo = document.querySelector('.header-logo');
+  if (logo) logo.src = state.shopLogo || 'Logo_a_ds.png';
+  const name = state.shopName || shopId.charAt(0).toUpperCase() + shopId.slice(1);
+  document.title = name + ' - Commission Tracker';
+  if (logo) logo.alt = name;
+}
+
 // === RENDER ===
 let fromRemote = false;
 
@@ -89,8 +98,8 @@ async function init() {
     return;
   }
 
-  // Set page title (fallback to slug, updated after Firebase load)
-  document.title = shopId.charAt(0).toUpperCase() + shopId.slice(1) + ' - Commission Tracker';
+  // Apply branding from state (logo + title)
+  applyBranding();
 
   // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -255,12 +264,8 @@ async function init() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lastSeen: Date.now() })
     });
-    // Fetch the real shop name for the tab title
-    try {
-      const shopRes = await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(shopId) + '/name.json');
-      const shopName = await shopRes.json();
-      if (shopName) document.title = shopName + ' - Commission Tracker';
-    } catch { /* keep fallback title */ }
+    // Apply branding after Firebase data loads
+    applyBranding();
   } catch { /* continue with local data */ }
   markInitialLoadDone();
   fromRemote = true;

@@ -68,6 +68,8 @@ for (const emp of state.employees) {
 }
 if (!Array.isArray(state.activityLog)) state.activityLog = [];
 if (!Array.isArray(state.payoutHistory)) state.payoutHistory = [];
+if (state.shopName === undefined) state.shopName = '';
+if (state.shopLogo === undefined) state.shopLogo = '';
 delete state.sheetsConfig;
 
 // === SAVE ===
