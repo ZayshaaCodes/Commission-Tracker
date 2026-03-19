@@ -155,6 +155,7 @@ export function calcEmployeeCommission(empId) {
   if (!emp) return 0;
   const role = getRole(emp.roleId);
   const rate = role ? role.commission / 100 : 0;
+  if (rate === 0) return 0;
   const work = getEmployeeWork(empId);
   let total = 0;
   for (const [svcId, qty] of Object.entries(work.inventory)) {

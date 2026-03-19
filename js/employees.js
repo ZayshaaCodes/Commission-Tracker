@@ -1,4 +1,4 @@
-import { $, money, esc, safeColor, safeAttr } from './utils.js';
+import { $, money, esc, safeColor, safeAttr, timeAgo } from './utils.js';
 import { state, getRole, calcEmployeeSales, calcEmployeeCommission,
          calcEmployeeServiceCount, saveState } from './state.js';
 import { showConfirmModal, showEditEmployeeModal } from './modals.js';
@@ -48,6 +48,7 @@ export function renderEmployees() {
         </label>
         <span class="emp-row-name">${esc(emp.name)} <span class="state-id-sep">|</span> <span class="state-id-inline">${esc(emp.stateId)}</span></span>
         <span class="role-badge" style="background:${safeColor(role ? role.color : '#666')}22;color:${safeColor(role ? role.color : '#888')};border-color:${safeColor(role ? role.color : '#666')};">${esc(role ? role.name : 'Unknown')}</span>
+        ${!emp.active && emp.inactiveDate ? `<span class="inactive-since">Inactive ${timeAgo(emp.inactiveDate)}</span>` : ''}
       </div>
       <div class="emp-row-stats">
         <span class="emp-row-stat"><span class="text-green">${money(sales)}</span></span>
@@ -84,6 +85,8 @@ export function renderEmployees() {
       const emp = state.employees.find(em => em.id === toggle.dataset.empToggle);
       if (emp) {
         emp.active = toggle.checked;
+        if (!emp.active) emp.inactiveDate = Date.now();
+        else delete emp.inactiveDate;
         render();
       }
     }
