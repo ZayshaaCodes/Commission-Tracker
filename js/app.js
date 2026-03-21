@@ -6,7 +6,7 @@ import { shopId } from './shop.js?v=20260321';
 import { hideModal, showConfirmModal } from './modals.js?v=20260321';
 import { isUnlocked, getAccessLevel, lockOut, restoreSession,
          checkPasscodeExists, showUnlockModal, showSetPasscodeModal,
-         showChangePasscodeModal, showEmployeePasscodeModal } from './auth.js';
+         showChangePasscodeModal, showEmployeePasscodeModal } from './auth.js?v=20260321';
 import { renderDashboard } from './dashboard.js?v=20260321';
 import { renderCommissions } from './commissions.js?v=20260321';
 import { renderEmployees } from './employees.js?v=20260321';

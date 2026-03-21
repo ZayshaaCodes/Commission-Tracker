@@ -18,6 +18,13 @@ let onRemoteData = null;
 // Used to detect which keys actually changed and need pushing.
 let lastPushedJson = {};
 
+// Version counter — incremented on every successful push.
+// Used to detect when the server is ahead (another client pushed).
+let knownVersion = 0;
+
+// Collections that should be merged by `id` field instead of overwritten.
+const MERGE_BY_ID_KEYS = new Set(['employees', 'services', 'roles', 'serviceGroups', 'activityLog', 'payoutHistory']);
+
 export function markInitialLoadDone() { initialLoadDone = true; }
 
 export function onRemoteUpdate(fn) { onRemoteData = fn; }
@@ -25,7 +32,7 @@ export function onRemoteUpdate(fn) { onRemoteData = fn; }
 export function scheduleSync() {
   if (!initialLoadDone) return;
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => pushToFirebase(), 1200);
+  syncTimer = setTimeout(() => pushToFirebase(), 600);
 }
 
 /** Push pending changes immediately (use after critical ops like service adds) */
@@ -84,6 +91,8 @@ export async function loadFromFirebase() {
     const data = await res.json();
 
     if (data) {
+      // Capture server version
+      knownVersion = data._version || 0;
       for (const k of Object.keys(data)) {
         if (!LOCAL_KEYS.has(k)) state[k] = data[k];
       }
@@ -107,7 +116,7 @@ export async function loadFromFirebase() {
   }
 }
 
-// === PUSH (PATCH-based, only changed keys) ===
+// === PUSH (version-checked, merge-before-push) ===
 export async function pushToFirebase() {
   if (syncInFlight || !initialLoadDone) return;
 
@@ -118,14 +127,41 @@ export async function pushToFirebase() {
   try {
     updateSyncBadge('Saving...', false);
 
-    const topPatch = {};
+    // 1) Check server version — if ahead, fetch + merge first
+    const verRes = await fetch(shopPath('state/_version.json'));
+    if (verRes.ok) {
+      const serverVer = (await verRes.json()) || 0;
+      if (serverVer > knownVersion) {
+        // Server is ahead — another client pushed. Fetch full state and merge.
+        const fullRes = await fetch(shopPath('state.json'));
+        if (fullRes.ok) {
+          const serverData = await fullRes.json();
+          if (serverData) {
+            mergeServerState(serverData);
+            knownVersion = serverData._version || serverVer;
+          }
+        }
+      }
+    }
+
+    // 2) Re-check what's still dirty after the merge
+    const stillChanged = getChangedKeys();
+    if (stillChanged.length === 0) {
+      updateSyncBadge('Synced', true);
+      return;
+    }
+
+    // 3) Increment version and push
+    const newVersion = knownVersion + 1;
+    state._version = newVersion;
+
+    const topPatch = { _version: newVersion };
     let workPatch = null;
 
-    for (const k of changed) {
+    for (const k of stillChanged) {
+      if (k === '_version') continue;
       const val = JSON.parse(JSON.stringify(state[k], replacer));
       if (k === 'work') {
-        // Push work at state/work.json with PATCH so that other employees'
-        // data written by other tabs is preserved on the server.
         workPatch = val;
       } else {
         topPatch[k] = val;
@@ -159,18 +195,18 @@ export async function pushToFirebase() {
       if (!res.ok) throw new Error('HTTP ' + res.status);
     }
 
-    // Mark pushed keys as clean
-    for (const k of changed) {
+    // Mark pushed keys as clean and update known version
+    knownVersion = newVersion;
+    for (const k of stillChanged) {
       lastPushedJson[k] = JSON.stringify(state[k], replacer);
     }
+    lastPushedJson['_version'] = JSON.stringify(newVersion);
     updateSyncBadge('Synced', true);
   } catch (err) {
     updateSyncBadge('Sync Error', false);
-    // Keys remain dirty - next push will retry them
     scheduleSync();
   } finally {
     syncInFlight = false;
-    // If new changes accumulated during push, schedule another
     if (getChangedKeys().length > 0) {
       scheduleSync();
     }
@@ -191,6 +227,39 @@ function mergeById(local, remote) {
     if (item && item.id) map.set(item.id, item);
   }
   return Array.from(map.values());
+}
+
+/**
+ * Merge two arrays by `id`, preserving the ORDER from `base` for items
+ * that exist in both, appending new-only items at the end.
+ * `winner` array's fields win on conflict (local or remote depending on caller).
+ */
+function mergeByIdOrdered(winner, base) {
+  winner = ensureArray(winner);
+  base = ensureArray(base);
+  const winnerMap = new Map();
+  for (const item of winner) {
+    if (item && item.id) winnerMap.set(item.id, item);
+  }
+  const baseMap = new Map();
+  for (const item of base) {
+    if (item && item.id) baseMap.set(item.id, item);
+  }
+  // Start with base order, preferring winner's version of each item
+  const result = [];
+  const seen = new Set();
+  for (const item of base) {
+    if (!item || !item.id) continue;
+    seen.add(item.id);
+    result.push(winnerMap.get(item.id) || item);
+  }
+  // Append items only in winner (new additions)
+  for (const item of winner) {
+    if (item && item.id && !seen.has(item.id)) {
+      result.push(item);
+    }
+  }
+  return result;
 }
 
 /** Firebase may turn sparse arrays into objects - normalize to array */
@@ -238,12 +307,55 @@ function workNeedsResync(merged, remote) {
   return false;
 }
 
-// === APPLY REMOTE DATA (merge-based - replaces the old overwrite approach) ===
+// === MERGE SERVER STATE (called before push when server is ahead) ===
+// Merges the full server snapshot into local state. Local wins on field conflicts
+// for items that exist in both, but new server items are added.
+function mergeServerState(serverData) {
+  if (!serverData || typeof serverData !== 'object') return;
+
+  // Merge work
+  if (serverData.work !== undefined) {
+    state.work = mergeWork(state.work || {}, serverData.work || {});
+  }
+
+  // Merge ID-based collections — local content wins, server additions kept
+  for (const k of MERGE_BY_ID_KEYS) {
+    if (serverData[k] !== undefined) {
+      const remote = ensureArray(serverData[k]);
+      const local = ensureArray(state[k]);
+      state[k] = mergeByIdOrdered(local, remote);
+    }
+  }
+
+  // For non-collection keys, keep local if dirty, otherwise accept server
+  for (const k of Object.keys(serverData)) {
+    if (LOCAL_KEYS.has(k) || k === 'work' || MERGE_BY_ID_KEYS.has(k)) continue;
+    if (k === '_version') continue;
+    // If we haven't changed this key locally, accept the server value
+    const localJson = JSON.stringify(state[k], replacer);
+    if (localJson === lastPushedJson[k]) {
+      state[k] = serverData[k];
+    }
+    // Otherwise keep local (our change wins for scalar keys)
+  }
+
+  // Update snapshots for keys we accepted from server
+  snapshotAllKeys();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+// === APPLY REMOTE DATA (SSE events — merge-based) ===
 function applyRemoteData(remoteData) {
   if (!remoteData || typeof remoteData !== 'object') return;
 
   const keysToResync = new Set();
   let anyChange = false;
+
+  // Track version
+  if (remoteData._version !== undefined) {
+    const rv = remoteData._version || 0;
+    if (rv > knownVersion) knownVersion = rv;
+  }
 
   // Deep-merge work - preserves locally-added entries from both tabs
   if (remoteData.work !== undefined) {
@@ -254,29 +366,30 @@ function applyRemoteData(remoteData) {
     if (JSON.stringify(state.work, replacer) !== before) anyChange = true;
   }
 
-  // Merge append-only collections by ID (activity log, payout history)
-  for (const k of ['activityLog', 'payoutHistory']) {
+  // Merge all ID-based collections (employees, services, roles, etc.)
+  for (const k of MERGE_BY_ID_KEYS) {
     if (remoteData[k] !== undefined) {
       const before = JSON.stringify(state[k], replacer);
       const remote = ensureArray(remoteData[k]);
-      const merged = mergeById(state[k] || [], remote);
+      const local = ensureArray(state[k]);
+      const merged = mergeByIdOrdered(local, remote);
+      // If local had items the server doesn't, we need to push them back
       if (merged.length > remote.length) keysToResync.add(k);
       state[k] = merged;
       if (JSON.stringify(state[k], replacer) !== before) anyChange = true;
     }
   }
 
-  // Accept remote as truth for everything else (settings, employees, etc.)
+  // Accept remote as truth for non-collection keys (scalars, settings)
   for (const k of Object.keys(remoteData)) {
     if (LOCAL_KEYS.has(k)) continue;
-    if (k === 'work' || k === 'activityLog' || k === 'payoutHistory') continue;
+    if (k === 'work' || k === '_version' || MERGE_BY_ID_KEYS.has(k)) continue;
     const before = JSON.stringify(state[k], replacer);
     state[k] = remoteData[k];
     if (JSON.stringify(state[k], replacer) !== before) anyChange = true;
   }
 
-  // Update snapshot for keys that are in sync - but NOT for keys that
-  // still have local extras that need pushing back to the server.
+  // Update snapshot for keys that are in sync
   for (const k of Object.keys(state)) {
     if (!LOCAL_KEYS.has(k) && !keysToResync.has(k)) {
       lastPushedJson[k] = JSON.stringify(state[k], replacer);
@@ -285,11 +398,9 @@ function applyRemoteData(remoteData) {
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 
-  // Only re-render if something actually changed locally
   if (anyChange && onRemoteData) onRemoteData();
   updateSyncBadge('Synced', true);
 
-  // If local state had entries the server didn't, push them out
   if (keysToResync.size > 0) {
     scheduleSync();
   }
