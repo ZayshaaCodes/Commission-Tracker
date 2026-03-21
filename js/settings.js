@@ -115,11 +115,13 @@ export function renderSettings() {
 
   for (const svc of state.services) {
     const tr = document.createElement('tr');
+    tr.dataset.svcId = svc.id;
     tr.innerHTML = `
+      <td class="svc-drag-cell"><span class="svc-drag-handle" draggable="true" title="Drag to reorder">&#9776;</span></td>
       <td><input value="${esc(svc.name)}" data-svc-name="${safeAttr(svc.id)}" style="width:100%;padding:6px 8px;font-size:13px;" /></td>
-      <td><input type="number" value="${svc.price}" data-svc-price="${safeAttr(svc.id)}" style="width:90px;padding:6px 8px;font-size:13px;" min="0" /></td>
-      <td><input type="number" value="${svc.eventPrice ?? svc.price}" data-svc-event="${safeAttr(svc.id)}" style="width:90px;padding:6px 8px;font-size:13px;" min="0" /></td>
-      <td><input type="number" value="${svc.commission || 0}" data-svc-comm="${safeAttr(svc.id)}" style="width:80px;padding:6px 8px;font-size:13px;" min="0" placeholder="0" /></td>
+      <td><input type="number" value="${svc.price}" data-svc-price="${safeAttr(svc.id)}" style="width:100%;padding:6px 4px;font-size:13px;" min="0" /></td>
+      <td><input type="number" value="${svc.eventPrice ?? svc.price}" data-svc-event="${safeAttr(svc.id)}" style="width:100%;padding:6px 4px;font-size:13px;" min="0" /></td>
+      <td><input type="number" value="${svc.commission || 0}" data-svc-comm="${safeAttr(svc.id)}" style="width:100%;padding:6px 4px;font-size:13px;" min="0" placeholder="0" /></td>
       <td>
         <select data-svc-cat="${safeAttr(svc.id)}" style="padding:6px;font-size:12px;">
           <option value="inventory" ${svc.category === 'inventory' ? 'selected' : ''}>Inventory</option>
@@ -156,6 +158,67 @@ export function renderSettings() {
     if (groupIn) { const s = getService(groupIn.dataset.svcGroup); if (s) s.group = groupIn.value; }
     saveState();
   };
+
+  // Drag-and-drop reorder (bind once — uses a flag to avoid stacking listeners)
+  if (!svcEl._dragBound) {
+    svcEl._dragBound = true;
+    let dragSrcId = null;
+    let dragSrcRow = null;
+
+    svcEl.addEventListener('dragstart', (e) => {
+      const handle = e.target.closest('.svc-drag-handle');
+      if (!handle) { e.preventDefault(); return; }
+      const tr = handle.closest('tr[data-svc-id]');
+      if (!tr) { e.preventDefault(); return; }
+      dragSrcId = tr.dataset.svcId;
+      dragSrcRow = tr;
+      tr.classList.add('svc-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setDragImage(tr, 0, 0);
+    });
+
+    svcEl.addEventListener('dragover', (e) => {
+      if (!dragSrcId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const tr = e.target.closest('tr[data-svc-id]');
+      if (!tr || tr.dataset.svcId === dragSrcId) return;
+      svcEl.querySelectorAll('.svc-drop-above,.svc-drop-below').forEach(r => r.classList.remove('svc-drop-above', 'svc-drop-below'));
+      const rect = tr.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      tr.classList.add(e.clientY < mid ? 'svc-drop-above' : 'svc-drop-below');
+    });
+
+    svcEl.addEventListener('dragleave', (e) => {
+      const tr = e.target.closest('tr[data-svc-id]');
+      if (tr) tr.classList.remove('svc-drop-above', 'svc-drop-below');
+    });
+
+    svcEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      svcEl.querySelectorAll('.svc-drop-above,.svc-drop-below,.svc-dragging').forEach(r => r.classList.remove('svc-drop-above', 'svc-drop-below', 'svc-dragging'));
+      const tr = e.target.closest('tr[data-svc-id]');
+      if (!tr || !dragSrcId || tr.dataset.svcId === dragSrcId) return;
+      const fromIdx = state.services.findIndex(s => s.id === dragSrcId);
+      let toIdx = state.services.findIndex(s => s.id === tr.dataset.svcId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = state.services.splice(fromIdx, 1);
+      toIdx = state.services.findIndex(s => s.id === tr.dataset.svcId);
+      const rect = tr.getBoundingClientRect();
+      const insertAfter = e.clientY >= rect.top + rect.height / 2;
+      state.services.splice(insertAfter ? toIdx + 1 : toIdx, 0, moved);
+      dragSrcId = null;
+      dragSrcRow = null;
+      saveState();
+      render();
+    });
+
+    svcEl.addEventListener('dragend', () => {
+      dragSrcId = null;
+      dragSrcRow = null;
+      svcEl.querySelectorAll('.svc-drop-above,.svc-drop-below,.svc-dragging').forEach(r => r.classList.remove('svc-drop-above', 'svc-drop-below', 'svc-dragging'));
+    });
+  }
 
   svcEl.onclick = (e) => {
     const del = e.target.closest('[data-svc-delete]');
