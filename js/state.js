@@ -1,6 +1,6 @@
-import { uid } from './utils.js';
-import { scheduleSync } from './firebase.js';
-import { shopId } from './shop.js';
+import { uid } from './utils.js?v=20260321';
+import { scheduleSync } from './firebase.js?v=20260321';
+import { shopId } from './shop.js?v=20260321';
 
 // === DEFAULT DATA ===
 const DEFAULT_ROLES = [

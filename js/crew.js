@@ -1,10 +1,10 @@
-import { $, money, esc, timeAgo, uid, safeColor } from './utils.js';
+import { $, money, esc, timeAgo, uid, safeColor } from './utils.js?v=20260321';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
-         calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js';
-import { renderTimeline, renderSalesChart } from './dashboard.js';
-import { showConfirmModal } from './modals.js';
-import { render } from './app.js';
-import { flushSync } from './firebase.js';
+         calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js?v=20260321';
+import { renderTimeline, renderSalesChart } from './dashboard.js?v=20260321';
+import { showConfirmModal } from './modals.js?v=20260321';
+import { render } from './app.js?v=20260321';
+import { flushSync } from './firebase.js?v=20260321';
 
 export function renderCrew() {
   // --- Crew Stats ---

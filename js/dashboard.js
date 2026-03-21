@@ -1,8 +1,8 @@
-import { $, money, esc, toGMT8, timeAgo, safeColor, safeAttr } from './utils.js';
+import { $, money, esc, toGMT8, timeAgo, safeColor, safeAttr } from './utils.js?v=20260321';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
-         calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
-import { isUnlocked, getAccessLevel } from './auth.js';
-import { render } from './app.js';
+         calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js?v=20260321';
+import { isUnlocked, getAccessLevel } from './auth.js?v=20260321';
+import { render } from './app.js?v=20260321';
 
 let dashSort = { key: 'sales', dir: -1 };
 let dashListenersBound = false;

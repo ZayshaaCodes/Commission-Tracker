@@ -1,8 +1,8 @@
-import { $, money, uid, esc, timeAgo, safeColor, safeAttr } from './utils.js';
+import { $, money, uid, esc, timeAgo, safeColor, safeAttr } from './utils.js?v=20260321';
 import { state, getRole, getService, getServiceGroup, getServicePrice, getEmployeeWork,
-         calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js';
-import { getAccessLevel } from './auth.js';
-import { flushSync } from './firebase.js';
+         calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js?v=20260321';
+import { getAccessLevel } from './auth.js?v=20260321';
+import { flushSync } from './firebase.js?v=20260321';
 
 // Module-level handler so removeEventListener can find the same reference
 function closeDropdown(e) {

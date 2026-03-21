@@ -1,6 +1,6 @@
-import { $, esc, safeAttr, safeColor } from './utils.js';
-import { state, getService, getServiceGroup, saveState } from './state.js';
-import { render, applyBranding } from './app.js';
+import { $, esc, safeAttr, safeColor } from './utils.js?v=20260321';
+import { state, getService, getServiceGroup, saveState } from './state.js?v=20260321';
+import { render, applyBranding } from './app.js?v=20260321';
 
 const MAX_LOGO_BYTES = 256 * 1024;
 let brandingBound = false;

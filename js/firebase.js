@@ -1,6 +1,6 @@
-import { $ } from './utils.js';
-import { state, STORAGE_KEY, LOCAL_KEYS } from './state.js';
-import { shopId } from './shop.js';
+import { $ } from './utils.js?v=20260321';
+import { state, STORAGE_KEY, LOCAL_KEYS } from './state.js?v=20260321';
+import { shopId } from './shop.js?v=20260321';
 
 export const FIREBASE_URL = 'https://dreamworks-commission-default-rtdb.firebaseio.com';
 

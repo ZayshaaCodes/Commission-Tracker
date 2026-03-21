@@ -1,18 +1,18 @@
-import { $, uid, esc, safeColor } from './utils.js';
-import { state, STORAGE_KEY, saveState, getRole, calcEmployeeSales, calcEmployeeCommission } from './state.js';
+import { $, uid, esc, safeColor } from './utils.js?v=20260321';
+import { state, STORAGE_KEY, saveState, getRole, calcEmployeeSales, calcEmployeeCommission } from './state.js?v=20260321';
 import { FIREBASE_URL, loadFromFirebase, pushToFirebase, flushSync, markInitialLoadDone,
-         onRemoteUpdate, startStreaming, migrateLegacyData } from './firebase.js';
-import { shopId } from './shop.js';
-import { hideModal, showConfirmModal } from './modals.js';
+         onRemoteUpdate, startStreaming, migrateLegacyData } from './firebase.js?v=20260321';
+import { shopId } from './shop.js?v=20260321';
+import { hideModal, showConfirmModal } from './modals.js?v=20260321';
 import { isUnlocked, getAccessLevel, lockOut, restoreSession,
          checkPasscodeExists, showUnlockModal, showSetPasscodeModal,
          showChangePasscodeModal, showEmployeePasscodeModal } from './auth.js';
-import { renderDashboard } from './dashboard.js';
-import { renderCommissions } from './commissions.js';
-import { renderEmployees } from './employees.js';
-import { renderSettings } from './settings.js';
-import { renderCrew } from './crew.js';
-import { exportCsv, exportJson, importJson } from './data.js';
+import { renderDashboard } from './dashboard.js?v=20260321';
+import { renderCommissions } from './commissions.js?v=20260321';
+import { renderEmployees } from './employees.js?v=20260321';
+import { renderSettings } from './settings.js?v=20260321';
+import { renderCrew } from './crew.js?v=20260321';
+import { exportCsv, exportJson, importJson } from './data.js?v=20260321';
 
 // === TAB SWITCHING ===
 let currentTab = sessionStorage.getItem('currentTab') || 'dashboard';
@@ -88,6 +88,11 @@ onRemoteUpdate(() => {
 // === INIT ===
 async function init() {
   const loader = $('loadingOverlay');
+
+  // Safety net: always hide loader after 12 seconds max
+  const loaderTimeout = setTimeout(() => {
+    if (loader) loader.style.display = 'none';
+  }, 12000);
 
   // No shop selected - show picker
   if (!shopId) {
@@ -266,8 +271,9 @@ async function init() {
   try {
     // Check that this shop was properly created (has a name/created entry)
     const shopMeta = await fetch(FIREBASE_URL + '/shops/' + encodeURIComponent(shopId) + '/name.json');
+    if (!shopMeta.ok) throw new Error('HTTP ' + shopMeta.status);
     const shopName = await shopMeta.json();
-    if (!shopName) {
+    if (!shopName || typeof shopName !== 'string') {
       // Shop was never created through the invite code flow — redirect to picker
       localStorage.removeItem(STORAGE_KEY);
       window.location.href = window.location.pathname;
@@ -291,6 +297,7 @@ async function init() {
   fromRemote = false;
 
   // Hide loading overlay
+  clearTimeout(loaderTimeout);
   if (loader) loader.style.display = 'none';
 
   // Start real-time streaming
@@ -304,8 +311,8 @@ init().catch(err => {
 });
 
 // === SHOP PICKER ===
-import { getShopUrl } from './shop.js';
-import { hashPasscode as hashAdmin, verifyPasscode as verifyAdmin, generateCode } from './utils.js';
+import { getShopUrl } from './shop.js?v=20260321';
+import { hashPasscode as hashAdmin, verifyPasscode as verifyAdmin, generateCode } from './utils.js?v=20260321';
 
 async function initShopPicker() {
   const nameInput = $('newShopName');

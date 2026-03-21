@@ -1,5 +1,5 @@
-import { $, esc, safeAttr } from './utils.js';
-import { state, getRole } from './state.js';
+import { $, esc, safeAttr } from './utils.js?v=20260321';
+import { state, getRole } from './state.js?v=20260321';
 
 export function showModal(html) {
   $('modalContent').innerHTML = html;
