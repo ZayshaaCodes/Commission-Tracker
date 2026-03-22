@@ -124,6 +124,16 @@ export function renderCrew() {
             timestamp: log.timestamp,
             isMeta: true
           });
+        } else if (log.type === 'remove') {
+          allEntries.push({
+            empName: log.empName,
+            color: safeColor(log.color || '#666'),
+            action: `Removed ${log.serviceName}`,
+            price: log.price || 0,
+            timestamp: log.timestamp,
+            isMeta: true,
+            isRemoval: true
+          });
         }
       }
     }
@@ -136,10 +146,11 @@ export function renderCrew() {
       feedEl.innerHTML = recent.map(item => {
         if (item.isMeta) {
           return `
-            <div class="af-item af-meta">
-              <span class="af-dot" style="background:${item.color}"></span>
+            <div class="af-item af-meta${item.isRemoval ? ' af-removal' : ''}">
+              <span class="af-dot" style="background:${item.isRemoval ? '#f87171' : item.color}"></span>
               <span class="af-name">${esc(item.empName)}</span>
               <span class="af-action">${esc(item.action)}</span>
+              ${item.isRemoval && item.price ? `<span class="af-price text-red">-${money(item.price)}</span>` : ''}
               ${item.timestamp ? `<span class="af-time">${timeAgo(item.timestamp)}</span>` : ''}
             </div>`;
         }

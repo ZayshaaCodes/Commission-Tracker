@@ -121,6 +121,15 @@
   font-style: italic;
 }
 
+.af-removal {
+  background: rgba(248, 113, 113, 0.07);
+  border-left-color: #f87171;
+}
+
+.af-removal .af-action {
+  color: #f87171;
+}
+
 /* --- Payout History --- */
 .payout-history {
   max-height: 500px;

@@ -94,8 +94,6 @@ export function renderCommissions() {
         : 'No employees have been added yet';
       emptyDropWrap.style.display = 'none';
     } else {
-      emptyIcon.textContent = '👆';
-      emptyMsg.textContent = 'Select an employee to start logging services';
       emptyDropWrap.style.display = '';
     }
     return;
@@ -348,13 +346,40 @@ export function renderCommissions() {
       const del = e.target.closest('.log-delete');
       if (!del) return;
       const w = getEmployeeWork(state.selectedEmployeeId);
+      const emp = state.employees.find(em => em.id === state.selectedEmployeeId);
+      const role = emp ? getRole(emp.roleId) : null;
       const entryId = del.dataset.entryId;
       const logId = del.dataset.logId;
       if (entryId) {
+        const entry = w.entries.find(en => en.id === entryId);
+        if (entry) {
+          const svc = getService(entry.serviceId);
+          if (!Array.isArray(state.activityLog)) state.activityLog = [];
+          state.activityLog.push({
+            id: uid(),
+            type: 'remove',
+            empName: emp ? emp.name : 'Unknown',
+            color: safeColor(role ? role.color : '#666'),
+            serviceName: svc ? svc.name : 'Unknown',
+            price: getServicePrice(entry.serviceId),
+            timestamp: Date.now()
+          });
+        }
         w.entries = w.entries.filter(en => en.id !== entryId);
       } else if (logId) {
         const log = w.inventoryLog.find(l => l.id === logId);
         if (log) {
+          const svc = getService(log.serviceId);
+          if (!Array.isArray(state.activityLog)) state.activityLog = [];
+          state.activityLog.push({
+            id: uid(),
+            type: 'remove',
+            empName: emp ? emp.name : 'Unknown',
+            color: safeColor(role ? role.color : '#666'),
+            serviceName: svc ? `${svc.name} x${log.quantity}` : 'Unknown',
+            price: getServicePrice(log.serviceId) * log.quantity,
+            timestamp: Date.now()
+          });
           w.inventory[log.serviceId] = Math.max(0, (w.inventory[log.serviceId] || 0) - log.quantity);
           if (w.inventory[log.serviceId] === 0) delete w.inventory[log.serviceId];
           w.inventoryLog = w.inventoryLog.filter(l => l.id !== logId);
