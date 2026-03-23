@@ -8,7 +8,7 @@
   <title>Commission Tracker</title>
   <link rel="icon" href="data:," />
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://dreamworks-commission-default-rtdb.firebaseio.com ws: wss:; img-src 'self' data:; font-src 'self';" />
-  <script type="module" crossorigin src="/Commission-Tracker/assets/index-DOsq3H__.js"></script>
+  <script type="module" crossorigin src="/Commission-Tracker/assets/index-CmEFa69k.js"></script>
   <link rel="stylesheet" crossorigin href="/Commission-Tracker/assets/index-DnosOw3I.css">
 </head>
 <body>
@@ -172,7 +172,10 @@
     </div>
     <div class="crew-content-row">
       <div class="panel crew-feed-panel">
-        <div class="panel-header"><h2>Activity Feed</h2></div>
+        <div class="panel-header">
+          <h2>Activity Feed</h2>
+          <button class="btn small danger" id="clearActivityFeed" style="display:none;">Clear Feed</button>
+        </div>
         <div id="activityFeed" class="activity-feed"></div>
       </div>
     </div>
