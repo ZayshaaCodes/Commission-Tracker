@@ -93,9 +93,28 @@ export async function loadFromFirebase() {
     if (data) {
       // Capture server version
       knownVersion = data._version || 0;
-      for (const k of Object.keys(data)) {
-        if (!LOCAL_KEYS.has(k)) state[k] = data[k];
+
+      // Merge ID-based collections (employees, roles, etc.) — local wins on
+      // conflicts so that unpushed changes (e.g. toggling inactive) survive.
+      for (const k of MERGE_BY_ID_KEYS) {
+        if (data[k] !== undefined) {
+          const remote = ensureArray(data[k]);
+          const local = ensureArray(state[k]);
+          state[k] = mergeByIdOrdered(local, remote);
+        }
       }
+
+      // Merge work separately — preserves entries from both sides
+      if (data.work !== undefined) {
+        state.work = mergeWork(state.work || {}, data.work || {});
+      }
+
+      // For all other keys, accept the server value
+      for (const k of Object.keys(data)) {
+        if (LOCAL_KEYS.has(k) || MERGE_BY_ID_KEYS.has(k) || k === 'work' || k === '_version') continue;
+        state[k] = data[k];
+      }
+
       // Treat the loaded data as our baseline for dirty detection
       snapshotAllKeys();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));

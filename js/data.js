@@ -81,7 +81,8 @@ export function importJson(file, onComplete) {
         stateId: String(emp.stateId || '').slice(0, 64),
         roleId: String(emp.roleId || ''),
         active: !!emp.active,
-        joinDate: Number(emp.joinDate) || Date.now()
+        joinDate: Number(emp.joinDate) || Date.now(),
+        ...(emp.inactiveDate ? { inactiveDate: Number(emp.inactiveDate) } : {})
       }));
 
       // Validate services
