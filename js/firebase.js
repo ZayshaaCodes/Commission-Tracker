@@ -116,9 +116,11 @@ export async function loadFromFirebase() {
         state.workClears = mergeWorkClears(state.workClears, data.workClears);
       }
 
-      // Merge work separately — preserves entries from both sides
+      // Work: on initial load, accept remote as authoritative.
+      // Any locally-cached work from a previous session that wasn't pushed
+      // should not override the server's version.
       if (data.work !== undefined) {
-        state.work = mergeWork(state.work || {}, data.work || {});
+        state.work = data.work || {};
       }
       pruneStaleWork();
 
@@ -422,9 +424,24 @@ function mergeServerState(serverData) {
     state.workClears = mergeWorkClears(state.workClears, serverData.workClears);
   }
 
-  // Merge work
+  // Work: per-employee clean/dirty check. Accept remote for employees
+  // the user hasn't touched, keep local for employees with pending edits.
   if (serverData.work !== undefined) {
-    state.work = mergeWork(state.work || {}, serverData.work || {});
+    const remoteWork = serverData.work || {};
+    if (!state.work) state.work = {};
+
+    const lastPushedWork = lastPushedJson['work']
+      ? JSON.parse(lastPushedJson['work']) : {};
+
+    for (const empId of Object.keys(remoteWork)) {
+      const localEmpJson = JSON.stringify(state.work[empId], replacer);
+      const lastPushedEmpJson = JSON.stringify(lastPushedWork[empId], replacer);
+      if (localEmpJson === lastPushedEmpJson) {
+        // Clean locally — accept remote version
+        state.work[empId] = remoteWork[empId];
+      }
+      // else: keep local — user edited this employee's work
+    }
   }
   pruneStaleWork();
 
@@ -487,12 +504,28 @@ function applyRemoteData(remoteData) {
     if (JSON.stringify(state.workClears, replacer) !== before) anyChange = true;
   }
 
-  // Deep-merge work - preserves locally-added entries from both tabs
+  // Work: for each employee in the remote data, accept remote as truth if
+  // that employee's local work is clean. If dirty, keep local and push it.
+  // This handles both full state updates and partial SSE updates correctly.
   if (remoteData.work !== undefined) {
     const before = JSON.stringify(state.work, replacer);
-    const merged = mergeWork(state.work || {}, remoteData.work || {});
-    if (workNeedsResync(merged, remoteData.work)) keysToResync.add('work');
-    state.work = merged;
+    const remoteWork = remoteData.work || {};
+    if (!state.work) state.work = {};
+
+    const lastPushedWork = lastPushedJson['work']
+      ? JSON.parse(lastPushedJson['work']) : {};
+
+    for (const empId of Object.keys(remoteWork)) {
+      const localEmpJson = JSON.stringify(state.work[empId], replacer);
+      const lastPushedEmpJson = JSON.stringify(lastPushedWork[empId], replacer);
+      if (localEmpJson === lastPushedEmpJson) {
+        // This employee's work is clean locally — accept remote
+        state.work[empId] = remoteWork[empId];
+      } else {
+        // This employee's work has local edits — keep local, push later
+        keysToResync.add('work');
+      }
+    }
     pruneStaleWork();
     if (JSON.stringify(state.work, replacer) !== before) anyChange = true;
   }
