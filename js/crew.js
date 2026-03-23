@@ -5,6 +5,7 @@ import { renderTimeline, renderSalesChart } from './dashboard.js';
 import { showConfirmModal } from './modals.js';
 import { render } from './app.js';
 import { flushSync } from './firebase.js';
+import { getAccessLevel } from './auth.js';
 
 export function renderCrew() {
   // --- Crew Stats ---
@@ -75,6 +76,19 @@ export function renderCrew() {
   const activeEmps = state.employees.filter(e => e.active);
   renderTimeline();
   renderSalesChart(activeEmps);
+
+  // --- Clear Activity Feed Button ---
+  const clearFeedBtn = $('clearActivityFeed');
+  if (clearFeedBtn) {
+    clearFeedBtn.style.display = getAccessLevel() === 'owner' && state.activityLog.length > 0 ? '' : 'none';
+    clearFeedBtn.onclick = () => {
+      showConfirmModal('Clear the entire activity feed? This cannot be undone.', () => {
+        state.activityLog = [];
+        render();
+        flushSync();
+      });
+    };
+  }
 
   // --- Activity Feed ---
   const feedEl = $('activityFeed');
