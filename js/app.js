@@ -102,6 +102,10 @@ async function init() {
   // Apply branding from state (logo + title)
   applyBranding();
 
+  // Version indicator
+  const versionEl = $('appVersion');
+  if (versionEl) versionEl.textContent = 'v' + __APP_VERSION__;
+
   // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
