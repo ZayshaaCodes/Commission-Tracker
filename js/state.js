@@ -1,6 +1,6 @@
-import { uid } from './utils.js?v=20260321';
-import { scheduleSync } from './firebase.js?v=20260321';
-import { shopId } from './shop.js?v=20260321';
+import { uid } from './utils.js';
+import { scheduleSync } from './firebase.js';
+import { shopId } from './shop.js';
 
 // === DEFAULT DATA ===
 const DEFAULT_ROLES = [
@@ -71,6 +71,7 @@ export const state = saved || {
 
 // Migrations
 if (!state.work) state.work = {};
+if (!state.workClears || typeof state.workClears !== 'object') state.workClears = {};
 for (const emp of state.employees) {
   if (!emp.joinDate) emp.joinDate = Date.now();
 }
@@ -107,6 +108,40 @@ export function saveState() {
   scheduleSync();
 }
 
+// === ACTIVITY LOGGING ===
+const ACTIVITY_BATCH_WINDOW = 60000;
+const MAX_ACTIVITY_ITEMS = 50;
+
+export function logActivity(entry) {
+  if (!Array.isArray(state.activityLog)) state.activityLog = [];
+  entry.id = entry.id || uid();
+  entry.timestamp = entry.timestamp || Date.now();
+
+  // Batch inventory add/remove within 1-minute window
+  if (entry.type === 'inventory' || entry.type === 'inv-remove') {
+    const recent = state.activityLog.find(
+      log => log.type === entry.type
+        && log.empId === entry.empId
+        && log.serviceId === entry.serviceId
+        && (entry.timestamp - log.timestamp) < ACTIVITY_BATCH_WINDOW
+    );
+    if (recent) {
+      recent.quantity += entry.quantity;
+      if (recent.quantity <= 0) {
+        state.activityLog = state.activityLog.filter(l => l.id !== recent.id);
+      }
+      return;
+    }
+  }
+
+  state.activityLog.push(entry);
+
+  // Trim to rolling 50
+  if (state.activityLog.length > MAX_ACTIVITY_ITEMS) {
+    state.activityLog = state.activityLog.slice(-MAX_ACTIVITY_ITEMS);
+  }
+}
+
 // === GETTERS ===
 export function getRole(roleId) {
   return state.roles.find(r => r.id === roleId);
@@ -137,9 +172,39 @@ export function getEmployeeWork(empId) {
   return w;
 }
 
+/** Returns the clear timestamp for an employee (0 if never cleared) */
+export function getWorkClearTime(empId) {
+  return (state.workClears && state.workClears[empId]) || 0;
+}
+
+/**
+ * Read-only filtered view of employee work — hides entries older than
+ * the last clear. Use for calculations and rendering. Does NOT mutate state.
+ */
+export function getEmployeeWorkView(empId) {
+  const w = getEmployeeWork(empId);
+  const clearTs = getWorkClearTime(empId);
+  if (!clearTs) return w;
+
+  const entries = w.entries.filter(e => (e.timestamp || 0) > clearTs);
+  const inventoryLog = w.inventoryLog.filter(l => (l.timestamp || 0) > clearTs);
+
+  // If everything is stale, inventory is also stale
+  if (entries.length === 0 && inventoryLog.length === 0) {
+    return { inventory: {}, entries: [], inventoryLog: [] };
+  }
+
+  // Rebuild inventory from post-clear logs only
+  const inventory = {};
+  for (const log of inventoryLog) {
+    inventory[log.serviceId] = (inventory[log.serviceId] || 0) + (log.quantity || 0);
+  }
+  return { inventory, entries, inventoryLog };
+}
+
 // === CALCULATIONS ===
 export function calcEmployeeSales(empId) {
-  const work = getEmployeeWork(empId);
+  const work = getEmployeeWorkView(empId);
   let total = 0;
   for (const [svcId, qty] of Object.entries(work.inventory)) {
     total += getServicePrice(svcId) * qty;
@@ -155,8 +220,7 @@ export function calcEmployeeCommission(empId) {
   if (!emp) return 0;
   const role = getRole(emp.roleId);
   const rate = role ? role.commission / 100 : 0;
-  if (rate === 0) return 0;
-  const work = getEmployeeWork(empId);
+  const work = getEmployeeWorkView(empId);
   let total = 0;
   for (const [svcId, qty] of Object.entries(work.inventory)) {
     const svc = state.services.find(s => s.id === svcId);
@@ -180,7 +244,7 @@ export function calcEmployeeCommission(empId) {
 }
 
 export function calcEmployeeServiceCount(empId) {
-  const work = getEmployeeWork(empId);
+  const work = getEmployeeWorkView(empId);
   let count = 0;
   for (const qty of Object.values(work.inventory)) count += qty;
   count += work.entries.length;

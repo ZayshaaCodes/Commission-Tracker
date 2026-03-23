@@ -1,5 +1,5 @@
 import { state, getRole, calcEmployeeSales, calcEmployeeCommission,
-         calcEmployeeServiceCount, saveState } from './state.js?v=20260321';
+         calcEmployeeServiceCount, saveState } from './state.js';
 
 function downloadFile(content, filename, type) {
   const blob = new Blob([content], { type });

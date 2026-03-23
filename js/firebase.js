@@ -1,6 +1,6 @@
-import { $ } from './utils.js?v=20260321';
-import { state, STORAGE_KEY, LOCAL_KEYS } from './state.js?v=20260321';
-import { shopId } from './shop.js?v=20260321';
+import { $ } from './utils.js';
+import { state, STORAGE_KEY, LOCAL_KEYS } from './state.js';
+import { shopId } from './shop.js';
 
 export const FIREBASE_URL = 'https://dreamworks-commission-default-rtdb.firebaseio.com';
 
@@ -23,7 +23,7 @@ let lastPushedJson = {};
 let knownVersion = 0;
 
 // Collections that should be merged by `id` field instead of overwritten.
-const MERGE_BY_ID_KEYS = new Set(['employees', 'services', 'roles', 'serviceGroups', 'activityLog', 'payoutHistory']);
+const MERGE_BY_ID_KEYS = new Set(['employees', 'services', 'roles', 'serviceGroups', 'payoutHistory']);
 
 export function markInitialLoadDone() { initialLoadDone = true; }
 
@@ -104,14 +104,26 @@ export async function loadFromFirebase() {
         }
       }
 
+      // Activity log: remote-authoritative merge (respects deletions from DB)
+      if (data.activityLog !== undefined) {
+        state.activityLog = mergeActivityLog(
+          ensureArray(state.activityLog), ensureArray(data.activityLog)
+        );
+      }
+
       // Merge work separately — preserves entries from both sides
       if (data.work !== undefined) {
         state.work = mergeWork(state.work || {}, data.work || {});
       }
 
+      // Merge workClears — max-wins per employee (separate from work)
+      if (data.workClears !== undefined) {
+        state.workClears = mergeWorkClears(state.workClears, data.workClears);
+      }
+
       // For all other keys, accept the server value
       for (const k of Object.keys(data)) {
-        if (LOCAL_KEYS.has(k) || MERGE_BY_ID_KEYS.has(k) || k === 'work' || k === '_version') continue;
+        if (LOCAL_KEYS.has(k) || MERGE_BY_ID_KEYS.has(k) || k === 'work' || k === 'workClears' || k === '_version') continue;
         state[k] = data[k];
       }
 
@@ -176,12 +188,15 @@ export async function pushToFirebase() {
 
     const topPatch = { _version: newVersion };
     let workPatch = null;
+    let workClearsPatch = null;
 
     for (const k of stillChanged) {
       if (k === '_version') continue;
       const val = JSON.parse(JSON.stringify(state[k], replacer));
       if (k === 'work') {
         workPatch = val;
+      } else if (k === 'workClears') {
+        workClearsPatch = val;
       } else {
         topPatch[k] = val;
       }
@@ -205,6 +220,18 @@ export async function pushToFirebase() {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(workPatch)
+        })
+      );
+    }
+
+    // Push workClears at its own path so Firebase shallow-merges per employee
+    // — old clients can't overwrite this because they never touch /state/workClears
+    if (workClearsPatch) {
+      requests.push(
+        fetch(shopPath('state/workClears.json'), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(workClearsPatch)
         })
       );
     }
@@ -246,6 +273,29 @@ function mergeById(local, remote) {
     if (item && item.id) map.set(item.id, item);
   }
   return Array.from(map.values());
+}
+
+/**
+ * Merge activity logs — remote is authoritative for deletions.
+ * Local-only items are kept only if they're genuinely new (created after
+ * the latest remote item), preventing deleted entries from being resurrected.
+ * Result is capped at 50 items (rolling log).
+ */
+function mergeActivityLog(local, remote) {
+  local = ensureArray(local);
+  remote = ensureArray(remote);
+  const remoteIds = new Set(remote.map(i => i?.id).filter(Boolean));
+  const remoteMaxTs = remote.reduce((m, i) => Math.max(m, i?.timestamp || 0), 0);
+  // Start with all remote items
+  const result = [...remote];
+  // Add local-only items that are genuinely new (created after latest remote item)
+  for (const item of local) {
+    if (item?.id && !remoteIds.has(item.id) && (item.timestamp || 0) > remoteMaxTs) {
+      result.push(item);
+    }
+  }
+  result.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  return result.slice(-50);
 }
 
 /**
@@ -303,12 +353,21 @@ function mergeWork(local, remote) {
     if (!r) { merged[empId] = l; continue; }
 
     merged[empId] = {
-      // Inventory counts: local wins (person at the counter is authoritative)
       inventory: { ...(r.inventory || {}), ...(l.inventory || {}) },
-      // Entries & logs: union by ID preserves work from both tabs
       entries: mergeById(ensureArray(l.entries), ensureArray(r.entries)),
-      inventoryLog: mergeById(ensureArray(l.inventoryLog), ensureArray(r.inventoryLog))
+      inventoryLog: mergeById(ensureArray(l.inventoryLog), ensureArray(r.inventoryLog)),
     };
+  }
+  return merged;
+}
+
+/** Merge workClears maps — always keep the highest (most recent) timestamp per employee */
+function mergeWorkClears(local, remote) {
+  const l = (local && typeof local === 'object') ? local : {};
+  const r = (remote && typeof remote === 'object') ? remote : {};
+  const merged = { ...l };
+  for (const empId of Object.keys(r)) {
+    merged[empId] = Math.max(merged[empId] || 0, r[empId] || 0);
   }
   return merged;
 }
@@ -337,6 +396,11 @@ function mergeServerState(serverData) {
     state.work = mergeWork(state.work || {}, serverData.work || {});
   }
 
+  // Merge workClears — max-wins per employee
+  if (serverData.workClears !== undefined) {
+    state.workClears = mergeWorkClears(state.workClears, serverData.workClears);
+  }
+
   // Merge ID-based collections — local content wins, server additions kept
   for (const k of MERGE_BY_ID_KEYS) {
     if (serverData[k] !== undefined) {
@@ -346,9 +410,16 @@ function mergeServerState(serverData) {
     }
   }
 
+  // Activity log: remote-authoritative merge
+  if (serverData.activityLog !== undefined) {
+    state.activityLog = mergeActivityLog(
+      ensureArray(state.activityLog), ensureArray(serverData.activityLog)
+    );
+  }
+
   // For non-collection keys, keep local if dirty, otherwise accept server
   for (const k of Object.keys(serverData)) {
-    if (LOCAL_KEYS.has(k) || k === 'work' || MERGE_BY_ID_KEYS.has(k)) continue;
+    if (LOCAL_KEYS.has(k) || k === 'work' || k === 'workClears' || MERGE_BY_ID_KEYS.has(k)) continue;
     if (k === '_version') continue;
     // If we haven't changed this key locally, accept the server value
     const localJson = JSON.stringify(state[k], replacer);
@@ -385,6 +456,13 @@ function applyRemoteData(remoteData) {
     if (JSON.stringify(state.work, replacer) !== before) anyChange = true;
   }
 
+  // Merge workClears — max-wins per employee (never resync down)
+  if (remoteData.workClears !== undefined) {
+    const before = JSON.stringify(state.workClears, replacer);
+    state.workClears = mergeWorkClears(state.workClears, remoteData.workClears);
+    if (JSON.stringify(state.workClears, replacer) !== before) anyChange = true;
+  }
+
   // Merge all ID-based collections (employees, services, roles, etc.)
   for (const k of MERGE_BY_ID_KEYS) {
     if (remoteData[k] !== undefined) {
@@ -399,10 +477,19 @@ function applyRemoteData(remoteData) {
     }
   }
 
+  // Activity log: remote-authoritative merge (no resync for deletions)
+  if (remoteData.activityLog !== undefined) {
+    const before = JSON.stringify(state.activityLog, replacer);
+    state.activityLog = mergeActivityLog(
+      ensureArray(state.activityLog), ensureArray(remoteData.activityLog)
+    );
+    if (JSON.stringify(state.activityLog, replacer) !== before) anyChange = true;
+  }
+
   // Accept remote as truth for non-collection keys (scalars, settings)
   for (const k of Object.keys(remoteData)) {
     if (LOCAL_KEYS.has(k)) continue;
-    if (k === 'work' || k === '_version' || MERGE_BY_ID_KEYS.has(k)) continue;
+    if (k === 'work' || k === 'workClears' || k === '_version' || MERGE_BY_ID_KEYS.has(k)) continue;
     const before = JSON.stringify(state[k], replacer);
     state[k] = remoteData[k];
     if (JSON.stringify(state[k], replacer) !== before) anyChange = true;

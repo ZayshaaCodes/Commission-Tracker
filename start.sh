@@ -10,4 +10,4 @@ if [ -n "$PID" ]; then
 fi
 
 echo "Starting Commission Tracker on http://localhost:$PORT"
-python3 -m http.server "$PORT"
+npx vite --port "$PORT" --host

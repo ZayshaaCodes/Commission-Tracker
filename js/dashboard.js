@@ -1,8 +1,8 @@
-import { $, money, esc, toGMT8, timeAgo, safeColor, safeAttr } from './utils.js?v=20260321';
-import { state, getRole, getService, getServicePrice, getEmployeeWork,
-         calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js?v=20260321';
-import { isUnlocked, getAccessLevel } from './auth.js?v=20260321';
-import { render } from './app.js?v=20260321';
+import { $, money, esc, toGMT8, timeAgo, safeColor, safeAttr } from './utils.js';
+import { state, getRole, getService, getServicePrice, getEmployeeWorkView,
+         calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
+import { isUnlocked, getAccessLevel } from './auth.js';
+import { render } from './app.js';
 
 let dashSort = { key: 'sales', dir: -1 };
 let dashListenersBound = false;
@@ -103,7 +103,7 @@ export function renderDashboard() {
     const svcCount = d.services;
 
     // Build tooltip with service breakdown
-    const work = getEmployeeWork(emp.id);
+    const work = getEmployeeWorkView(emp.id);
     const showTime = isUnlocked();
     let tipHtml = '';
 
@@ -221,7 +221,7 @@ export function renderTimeline() {
   const allEntries = [];
   for (const emp of state.employees) {
     if (!emp.active) continue;
-    const work = getEmployeeWork(emp.id);
+    const work = getEmployeeWorkView(emp.id);
     const role = getRole(emp.roleId);
     const color = role ? safeColor(role.color) : '#666';
     for (const entry of work.entries) {

@@ -1,8 +1,8 @@
-import { $, money, esc, safeColor, safeAttr, timeAgo } from './utils.js?v=20260321';
+import { $, money, esc, safeColor, safeAttr, timeAgo } from './utils.js';
 import { state, getRole, calcEmployeeSales, calcEmployeeCommission,
-         calcEmployeeServiceCount, saveState } from './state.js?v=20260321';
-import { showConfirmModal, showEditEmployeeModal } from './modals.js?v=20260321';
-import { render } from './app.js?v=20260321';
+         calcEmployeeServiceCount, saveState } from './state.js';
+import { showConfirmModal, showEditEmployeeModal } from './modals.js';
+import { render } from './app.js';
 
 export function renderEmployees() {
   // Populate role dropdown

@@ -1,1 +1,3 @@
 dbBackup.json
+node_modules
+dist

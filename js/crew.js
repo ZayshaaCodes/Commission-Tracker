@@ -1,10 +1,10 @@
-import { $, money, esc, timeAgo, uid, safeColor } from './utils.js?v=20260321';
+import { $, money, esc, timeAgo, uid, safeColor } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWork,
-         calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js?v=20260321';
-import { renderTimeline, renderSalesChart } from './dashboard.js?v=20260321';
-import { showConfirmModal } from './modals.js?v=20260321';
-import { render } from './app.js?v=20260321';
-import { flushSync } from './firebase.js?v=20260321';
+         calcEmployeeSales, calcEmployeeCommission, saveState, logActivity } from './state.js';
+import { renderTimeline, renderSalesChart } from './dashboard.js';
+import { showConfirmModal } from './modals.js';
+import { render } from './app.js';
+import { flushSync } from './firebase.js';
 
 export function renderCrew() {
   // --- Crew Stats ---
@@ -53,17 +53,17 @@ export function renderCrew() {
           employees: lines
         });
         // Clear all work
+        if (!state.workClears) state.workClears = {};
+        const clearTs = Date.now();
         for (const emp of state.employees) {
+          state.workClears[emp.id] = clearTs;
           state.work[emp.id] = { inventory: {}, entries: [] };
         }
         // Log to activity feed
-        if (!Array.isArray(state.activityLog)) state.activityLog = [];
-        state.activityLog.push({
-          id: uid(),
+        logActivity({
           type: 'payout',
           gross: totalSales,
-          commission: totalCommission,
-          timestamp: Date.now()
+          commission: totalCommission
         });
         render();
         flushSync();
@@ -79,89 +79,70 @@ export function renderCrew() {
   // --- Activity Feed ---
   const feedEl = $('activityFeed');
   if (feedEl) {
-    const allEntries = [];
-    for (const emp of state.employees) {
-      const work = getEmployeeWork(emp.id);
-      const role = getRole(emp.roleId);
-      for (const entry of work.entries) {
-        const svc = getService(entry.serviceId);
-        allEntries.push({
-          empName: emp.name,
-          color: safeColor(role ? role.color : '#666'),
-          price: getServicePrice(entry.serviceId),
-          timestamp: entry.timestamp
-        });
-      }
-      for (const log of work.inventoryLog) {
-        const svc = getService(log.serviceId);
-        allEntries.push({
-          empName: emp.name,
-          color: safeColor(role ? role.color : '#666'),
-          action: svc ? `${svc.name} x${log.quantity}` : 'Unknown',
-          price: getServicePrice(log.serviceId) * log.quantity,
-          timestamp: log.timestamp
-        });
-      }
-    }
-    // Include activity log entries (clears & payouts)
-    if (Array.isArray(state.activityLog)) {
-      for (const log of state.activityLog) {
-        if (log.type === 'clear') {
-          allEntries.push({
-            empName: log.empName,
-            color: safeColor(log.color || '#666'),
-            action: `Cleared - Gross: ${money(log.gross)}, Commission: ${money(log.commission)}`,
-            price: 0,
-            timestamp: log.timestamp,
-            isMeta: true
-          });
-        } else if (log.type === 'payout') {
-          allEntries.push({
-            empName: 'System',
-            color: '#f59e0b',
-            action: `Weekly Payout - Gross: ${money(log.gross)}, Commission: ${money(log.commission)}`,
-            price: 0,
-            timestamp: log.timestamp,
-            isMeta: true
-          });
-        } else if (log.type === 'remove') {
-          allEntries.push({
-            empName: log.empName,
-            color: safeColor(log.color || '#666'),
-            action: `Removed ${log.serviceName}`,
-            price: log.price || 0,
-            timestamp: log.timestamp,
-            isMeta: true,
-            isRemoval: true
-          });
-        }
-      }
-    }
-    allEntries.sort((a, b) => b.timestamp - a.timestamp);
-    const recent = allEntries.slice(0, 50);
+    const entries = Array.isArray(state.activityLog)
+      ? [...state.activityLog].sort((a, b) => b.timestamp - a.timestamp)
+      : [];
 
-    if (recent.length === 0) {
+    if (entries.length === 0) {
       feedEl.innerHTML = '<div style="color:#666;padding:12px;text-align:center;">No activity yet</div>';
     } else {
-      feedEl.innerHTML = recent.map(item => {
-        if (item.isMeta) {
-          return `
-            <div class="af-item af-meta${item.isRemoval ? ' af-removal' : ''}">
-              <span class="af-dot" style="background:${item.isRemoval ? '#f87171' : item.color}"></span>
-              <span class="af-name">${esc(item.empName)}</span>
-              <span class="af-action">${esc(item.action)}</span>
-              ${item.isRemoval && item.price ? `<span class="af-price text-red">-${money(item.price)}</span>` : ''}
-              ${item.timestamp ? `<span class="af-time">${timeAgo(item.timestamp)}</span>` : ''}
-            </div>`;
+      feedEl.innerHTML = entries.map(item => {
+        switch (item.type) {
+          case 'service':
+            return `
+              <div class="af-item">
+                <span class="af-dot" style="background:${item.color}"></span>
+                <span class="af-name">${esc(item.empName)}</span>
+                <span class="af-action">${esc(item.serviceName)}</span>
+                <span class="af-price text-green">+${money(item.price)}</span>
+                <span class="af-time">${timeAgo(item.timestamp)}</span>
+              </div>`;
+          case 'inventory':
+            return `
+              <div class="af-item">
+                <span class="af-dot" style="background:${item.color}"></span>
+                <span class="af-name">${esc(item.empName)}</span>
+                <span class="af-action">${esc(item.serviceName)} x${item.quantity}</span>
+                <span class="af-price text-green">+${money(item.unitPrice * item.quantity)}</span>
+                <span class="af-time">${timeAgo(item.timestamp)}</span>
+              </div>`;
+          case 'inv-remove':
+            return `
+              <div class="af-item af-meta af-removal">
+                <span class="af-dot" style="background:#f87171"></span>
+                <span class="af-name">${esc(item.empName)}</span>
+                <span class="af-action">Removed ${esc(item.serviceName)}${item.quantity > 1 ? ' x' + item.quantity : ''}</span>
+                <span class="af-price text-red">-${money(item.unitPrice * item.quantity)}</span>
+                <span class="af-time">${timeAgo(item.timestamp)}</span>
+              </div>`;
+          case 'remove':
+            return `
+              <div class="af-item af-meta af-removal">
+                <span class="af-dot" style="background:#f87171"></span>
+                <span class="af-name">${esc(item.empName)}</span>
+                <span class="af-action">Removed ${esc(item.serviceName)}</span>
+                ${item.price ? `<span class="af-price text-red">-${money(item.price)}</span>` : ''}
+                <span class="af-time">${timeAgo(item.timestamp)}</span>
+              </div>`;
+          case 'clear':
+            return `
+              <div class="af-item af-meta">
+                <span class="af-dot" style="background:${safeColor(item.color || '#666')}"></span>
+                <span class="af-name">${esc(item.empName)}</span>
+                <span class="af-action">Cleared &mdash; Gross: ${money(item.gross)}, Comm: ${money(item.commission)}</span>
+                <span class="af-time">${timeAgo(item.timestamp)}</span>
+              </div>`;
+          case 'payout':
+            return `
+              <div class="af-item af-meta">
+                <span class="af-dot" style="background:#f59e0b"></span>
+                <span class="af-name">System</span>
+                <span class="af-action">Weekly Payout &mdash; Gross: ${money(item.gross)}, Comm: ${money(item.commission)}</span>
+                <span class="af-time">${timeAgo(item.timestamp)}</span>
+              </div>`;
+          default:
+            return '';
         }
-        return `
-          <div class="af-item">
-            <span class="af-dot" style="background:${item.color}"></span>
-            <span class="af-name">${esc(item.empName)}</span>
-            <span class="af-action">${esc(item.action)}</span>
-            <span class="af-price text-green">${money(item.price)}</span>
-            ${item.timestamp ? `<span class="af-time">${timeAgo(item.timestamp)}</span>` : ''}
-          </div>`;
       }).join('');
     }
   }

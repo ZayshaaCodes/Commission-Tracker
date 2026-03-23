@@ -1,7 +1,7 @@
-import { $, hashPasscode, verifyPasscode } from './utils.js?v=20260321';
-import { FIREBASE_URL } from './firebase.js?v=20260321';
-import { shopId } from './shop.js?v=20260321';
-import { showModal, hideModal } from './modals.js?v=20260321';
+import { $, hashPasscode, verifyPasscode } from './utils.js';
+import { FIREBASE_URL } from './firebase.js';
+import { shopId } from './shop.js';
+import { showModal, hideModal } from './modals.js';
 
 function shopUrl(path) {
   return `${FIREBASE_URL}/shops/${shopId}/${path}`;

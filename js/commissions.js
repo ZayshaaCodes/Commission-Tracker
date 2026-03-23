@@ -1,8 +1,8 @@
-import { $, money, uid, esc, timeAgo, safeColor, safeAttr } from './utils.js?v=20260321';
+import { $, money, uid, esc, timeAgo, safeColor, safeAttr } from './utils.js';
 import { state, getRole, getService, getServiceGroup, getServicePrice, getEmployeeWork,
-         calcEmployeeSales, calcEmployeeCommission, saveState } from './state.js?v=20260321';
-import { getAccessLevel } from './auth.js?v=20260321';
-import { flushSync } from './firebase.js?v=20260321';
+         getEmployeeWorkView, calcEmployeeSales, calcEmployeeCommission, saveState, logActivity } from './state.js';
+import { getAccessLevel } from './auth.js';
+import { flushSync } from './firebase.js';
 
 // Module-level handler so removeEventListener can find the same reference
 function closeDropdown(e) {
@@ -107,7 +107,7 @@ export function renderCommissions() {
 
   const emp = state.employees.find(e => e.id === state.selectedEmployeeId);
   const role = getRole(emp.roleId);
-  const work = getEmployeeWork(emp.id);
+  const work = getEmployeeWorkView(emp.id);
 
   $('workEmployeeHeader').innerHTML = `
     <span class="work-emp-name">${esc(emp.name)}</span>
@@ -145,10 +145,12 @@ export function renderCommissions() {
     const svcId = btn.dataset.svc;
     const dir = parseInt(btn.dataset.dir);
     const w = getEmployeeWork(state.selectedEmployeeId);
-    w.inventory[svcId] = Math.max(0, (w.inventory[svcId] || 0) + dir);
+    const prevQty = w.inventory[svcId] || 0;
+    w.inventory[svcId] = Math.max(0, prevQty + dir);
     if (w.inventory[svcId] === 0) delete w.inventory[svcId];
+    const changed = (w.inventory[svcId] || 0) !== prevQty;
 
-    // Activity feed: batch inventory sales within 1-minute window
+    // Work log: batch inventory sales within 1-minute window
     const now = Date.now();
     const BATCH_WINDOW = 60000;
     if (dir === 1) {
@@ -160,7 +162,20 @@ export function renderCommissions() {
       } else {
         w.inventoryLog.push({ id: uid(), serviceId: svcId, quantity: 1, timestamp: now });
       }
-    } else if (dir === -1) {
+      const emp = state.employees.find(em => em.id === state.selectedEmployeeId);
+      const role = emp ? getRole(emp.roleId) : null;
+      const svc = getService(svcId);
+      logActivity({
+        type: 'inventory',
+        empId: state.selectedEmployeeId,
+        empName: emp ? emp.name : 'Unknown',
+        color: safeColor(role ? role.color : '#666'),
+        serviceName: svc ? svc.name : 'Unknown',
+        serviceId: svcId,
+        quantity: 1,
+        unitPrice: getServicePrice(svcId)
+      });
+    } else if (dir === -1 && changed) {
       const recent = w.inventoryLog.find(
         log => log.serviceId === svcId && (now - log.timestamp) < BATCH_WINDOW && log.quantity > 0
       );
@@ -170,6 +185,19 @@ export function renderCommissions() {
           w.inventoryLog = w.inventoryLog.filter(log => log.id !== recent.id);
         }
       }
+      const emp = state.employees.find(em => em.id === state.selectedEmployeeId);
+      const role = emp ? getRole(emp.roleId) : null;
+      const svc = getService(svcId);
+      logActivity({
+        type: 'inv-remove',
+        empId: state.selectedEmployeeId,
+        empName: emp ? emp.name : 'Unknown',
+        color: safeColor(role ? role.color : '#666'),
+        serviceName: svc ? svc.name : 'Unknown',
+        serviceId: svcId,
+        quantity: 1,
+        unitPrice: getServicePrice(svcId)
+      });
     }
 
     renderCommissions();
@@ -214,6 +242,15 @@ export function renderCommissions() {
       btn.onclick = () => {
         const w = getEmployeeWork(state.selectedEmployeeId);
         w.entries.push({ id: uid(), serviceId: svc.id, timestamp: Date.now() });
+        const emp = state.employees.find(em => em.id === state.selectedEmployeeId);
+        const role = emp ? getRole(emp.roleId) : null;
+        logActivity({
+          type: 'service',
+          empName: emp ? emp.name : 'Unknown',
+          color: safeColor(role ? role.color : '#666'),
+          serviceName: svc.name,
+          price: getServicePrice(svc.id)
+        });
         renderCommissions();
         saveState();
         flushSync();
@@ -252,6 +289,15 @@ export function renderCommissions() {
       btn.onclick = () => {
         const w = getEmployeeWork(state.selectedEmployeeId);
         w.entries.push({ id: uid(), serviceId: svc.id, timestamp: Date.now() });
+        const emp = state.employees.find(em => em.id === state.selectedEmployeeId);
+        const role = emp ? getRole(emp.roleId) : null;
+        logActivity({
+          type: 'service',
+          empName: emp ? emp.name : 'Unknown',
+          color: safeColor(role ? role.color : '#666'),
+          serviceName: svc.name,
+          price: getServicePrice(svc.id)
+        });
         renderCommissions();
         saveState();
         flushSync();
@@ -354,15 +400,12 @@ export function renderCommissions() {
         const entry = w.entries.find(en => en.id === entryId);
         if (entry) {
           const svc = getService(entry.serviceId);
-          if (!Array.isArray(state.activityLog)) state.activityLog = [];
-          state.activityLog.push({
-            id: uid(),
+          logActivity({
             type: 'remove',
             empName: emp ? emp.name : 'Unknown',
             color: safeColor(role ? role.color : '#666'),
             serviceName: svc ? svc.name : 'Unknown',
-            price: getServicePrice(entry.serviceId),
-            timestamp: Date.now()
+            price: getServicePrice(entry.serviceId)
           });
         }
         w.entries = w.entries.filter(en => en.id !== entryId);
@@ -370,15 +413,12 @@ export function renderCommissions() {
         const log = w.inventoryLog.find(l => l.id === logId);
         if (log) {
           const svc = getService(log.serviceId);
-          if (!Array.isArray(state.activityLog)) state.activityLog = [];
-          state.activityLog.push({
-            id: uid(),
+          logActivity({
             type: 'remove',
             empName: emp ? emp.name : 'Unknown',
             color: safeColor(role ? role.color : '#666'),
             serviceName: svc ? `${svc.name} x${log.quantity}` : 'Unknown',
-            price: getServicePrice(log.serviceId) * log.quantity,
-            timestamp: Date.now()
+            price: getServicePrice(log.serviceId) * log.quantity
           });
           w.inventory[log.serviceId] = Math.max(0, (w.inventory[log.serviceId] || 0) - log.quantity);
           if (w.inventory[log.serviceId] === 0) delete w.inventory[log.serviceId];
