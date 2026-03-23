@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#1a1a1a" />
+  <meta name="description" content="Commission Tracker - track employee commissions and services" />
+  <title>Commission Tracker</title>
+  <link rel="icon" href="data:," />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://dreamworks-commission-default-rtdb.firebaseio.com ws: wss:; img-src 'self' data:; font-src 'self';" />
+  <script type="module" crossorigin src="/Commission-Tracker/assets/index-DOsq3H__.js"></script>
+  <link rel="stylesheet" crossorigin href="/Commission-Tracker/assets/index-DnosOw3I.css">
+</head>
+<body>
+  <!-- Loading overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Connecting to database...</div>
+  </div>
+
+  <!-- Shop picker (shown when no ?shop= param) -->
+  <div id="shopPicker" class="shop-picker" style="display:none;">
+    <div class="shop-picker-card">
+      <h1 class="shop-picker-title">Commission Tracker</h1>
+      <p class="shop-picker-sub">Select your shop or create a new one</p>
+      <div id="shopList" class="shop-list"></div>
+      <div class="shop-picker-divider"></div>
+      <div class="shop-create-row">
+        <input id="newShopName" type="text" placeholder="New shop name..." maxlength="48" />
+        <input id="shopInviteCode" type="text" placeholder="Invite code" maxlength="8" style="width:100px;text-transform:uppercase;" />
+        <button class="btn primary" id="createShopBtn">Create</button>
+      </div>
+      <p id="shopCreateError" class="shop-error"></p>
+      <div class="shop-picker-divider"></div>
+      <div class="admin-section">
+        <button class="btn small" id="adminToggleBtn">🔑 Admin</button>
+        <div id="adminPanel" style="display:none;">
+          <div id="adminLoginArea">
+            <div class="shop-create-row" style="margin-top:8px;">
+              <input id="adminPasscode" type="password" placeholder="Admin passcode" />
+              <button class="btn small primary" id="adminLoginBtn">Login</button>
+            </div>
+            <p id="adminError" class="shop-error"></p>
+          </div>
+          <div id="adminControls" style="display:none;">
+            <button class="btn primary" id="generateCodeBtn" style="width:100%;margin-bottom:8px;">Generate Invite Code</button>
+            <div id="generatedCodeDisplay" style="display:none;" class="invite-code-box">
+              <span id="generatedCodeText" class="invite-code-text"></span>
+              <p style="color:#a0a0a0;font-size:12px;margin:4px 0 0;">One-time use - share it with the shop owner.</p>
+            </div>
+            <div id="inviteCodeList" class="invite-code-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App (hidden until shop is selected) -->
+  <div id="appRoot">
+  <div class="app-header">
+    <div class="header-row-top">
+      <img src="/Commission-Tracker/assets/Logo_a_ds-BNOg5MOh.png" alt="Dreamworks Customs" class="header-logo" />
+      <div class="header-status">
+        <button class="btn small" id="lockToggle">🔒 Locked</button>
+        <span id="syncDot" class="sync-dot" title="Loading..."></span>
+      </div>
+    </div>
+    <div class="header-row-tabs">
+      <button class="btn tab-btn active" data-tab="dashboard">Dashboard</button>
+      <button class="btn tab-btn" data-tab="commissions">Commissions</button>
+      <button class="btn tab-btn owner-only-tab" data-tab="stats">Stats</button>
+      <button class="btn tab-btn" data-tab="employees">Employees</button>
+      <button class="btn tab-btn" data-tab="settings">Settings</button>
+    </div>
+  </div>
+
+  <!-- ===================== DASHBOARD ===================== -->
+  <div id="dashboardTab" class="tab-content active">
+    <div class="metrics-row" id="metricsRow"></div>
+
+    <div class="dashboard-main-row">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Employee Summary</h2>
+          <div class="panel-actions">
+            <button class="btn small" id="exportCsvBtn">Export CSV</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="dashboardTable">
+            <thead>
+              <tr>
+                <th class="sortable" data-sort="name">Employee <span class="sort-arrow"></span></th>
+                <th class="sortable" data-sort="role">Role <span class="sort-arrow"></span></th>
+                <th class="sortable" data-sort="services">Services <span class="sort-arrow"></span></th>
+                <th class="sortable" data-sort="sales">Gross Sales <span class="sort-arrow"></span></th>
+                <th class="sortable" data-sort="commission">Commission <span class="sort-arrow"></span></th>
+                <th class="sortable" data-sort="net">Net Sales <span class="sort-arrow"></span></th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="commissionsTab" class="tab-content">
+    <div id="commissionWorkArea" style="display:none;">
+      <div id="compactSummary" class="compact-summary"></div>
+
+      <div class="commission-grid">
+        <div class="panel">
+          <div class="panel-header emp-dropdown-wrap" id="empPanelHeader">
+            <div id="workEmployeeHeader" class="work-emp-header">
+              <span class="work-emp-name">Select Employee...</span>
+              <span class="emp-dropdown-arrow">&#9662;</span>
+            </div>
+            <div class="panel-actions">
+              <button class="btn danger small" id="clearEmployeeWork">Clear All</button>
+            </div>
+            <div class="emp-dropdown-list" id="employeeDropdownList" style="display:none;"></div>
+          </div>
+
+          <div class="inventory-section">
+            <h3>Inventory Items</h3>
+            <div id="inventoryCounters" class="counter-grid"></div>
+          </div>
+
+          <div class="services-section">
+            <h3>Log Service</h3>
+            <div id="serviceButtons" class="service-buttons"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h2>Service Log</h2></div>
+          <div id="serviceLog" class="service-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="noEmployeeSelected" class="empty-state-large">
+      <div class="emp-dropdown-wrap" style="margin-top:16px;">
+        <button class="emp-dropdown-btn" id="noEmpDropdownBtn">
+          <span>Select Employee...</span>
+          <span class="emp-dropdown-arrow">&#9662;</span>
+        </button>
+        <div class="emp-dropdown-list" id="noEmpDropdownList" style="display:none;"></div>
+      </div>
+      <div class="empty-icon">👆</div>
+      <p class="empty-msg">Select an employee to start logging services</p>
+    </div>
+  </div>
+
+  <!-- ===================== STATS (Owner) ===================== -->
+  <div id="statsTab" class="tab-content">
+    <div class="crew-stats-bar">
+      <h2 class="crew-stats-title">Crew Overview</h2>
+      <div id="crewStats" class="crew-stats"></div>
+      <button class="btn primary small" id="weeklyPayoutBtn">Weekly Payout</button>
+    </div>
+    <div class="stats-charts-row">
+      <div class="panel">
+        <div class="panel-header"><h2>Activity Timeline</h2></div>
+        <div id="activityTimeline"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h2>Sales by Employee</h2></div>
+        <div id="salesChart"></div>
+      </div>
+    </div>
+    <div class="crew-content-row">
+      <div class="panel crew-feed-panel">
+        <div class="panel-header"><h2>Activity Feed</h2></div>
+        <div id="activityFeed" class="activity-feed"></div>
+      </div>
+    </div>
+    <div class="crew-content-row">
+      <div class="panel">
+        <div class="panel-header"><h2>Payout History</h2></div>
+        <div id="payoutHistory" class="payout-history"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== EMPLOYEES ===================== -->
+  <div id="employeesTab" class="tab-content">
+    <div class="panel" style="margin-bottom:12px;">
+      <div class="panel-header">
+        <h2>Add Employee</h2>
+      </div>
+      <div class="add-employee-form">
+        <input id="newEmpName" placeholder="Name" />
+        <input id="newEmpStateId" placeholder="State ID" />
+        <select id="newEmpRole"></select>
+        <button class="btn primary" id="addEmployeeBtn">Add Employee</button>
+      </div>
+    </div>
+
+    <div class="employee-filter">
+      <button class="btn small filter-btn active" data-filter="active">Active</button>
+      <button class="btn small filter-btn" data-filter="inactive">Inactive</button>
+      <button class="btn small filter-btn" data-filter="all">All</button>
+    </div>
+
+    <div id="employeeGrid" class="employee-grid"></div>
+  </div>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <div id="settingsTab" class="tab-content">
+    <!-- Row 1: Shop Branding -->
+    <div class="panel settings-full">
+      <div class="panel-header"><h2>Shop Branding</h2></div>
+      <div class="branding-row">
+        <div class="branding-logo-section">
+          <label class="branding-label">Header Logo</label>
+          <div class="branding-logo-preview-wrap">
+            <img id="logoPreview" class="branding-logo-preview" src="/Commission-Tracker/assets/Logo_a_ds-BNOg5MOh.png" alt="Logo preview" />
+          </div>
+          <div class="branding-logo-actions">
+            <button class="btn small" id="uploadLogoBtn">Upload Logo</button>
+            <button class="btn small danger" id="removeLogoBtn" style="display:none;">Remove</button>
+            <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;" />
+          </div>
+          <span class="muted">PNG, JPG, WebP, or SVG. Max 256 KB.</span>
+        </div>
+        <div class="branding-name-section">
+          <label class="branding-label" for="shopDisplayName">Shop Name</label>
+          <input id="shopDisplayName" type="text" placeholder="My Shop" maxlength="48" />
+          <span class="muted">Used in the browser tab and header</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Two-column — Left stack / Right service pricing -->
+    <div class="settings-two-col">
+      <div class="settings-left-stack">
+        <!-- General -->
+        <div class="panel">
+          <div class="panel-header"><h2>General</h2></div>
+          <div class="control-group">
+            <label for="eventModeToggle">Event Mode</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="eventModeToggle" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="muted">Uses event pricing for services when enabled</span>
+          </div>
+        </div>
+
+        <!-- Commission Rates -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Commission Rates</h2>
+            <div class="panel-actions"><button class="btn small" id="addRoleBtn">+ Role</button></div>
+          </div>
+          <div id="rolesEditor"></div>
+        </div>
+
+        <!-- Service Groups -->
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Service Groups</h2>
+            <div class="panel-actions"><button class="btn small" id="addGroupBtn">+ Group</button></div>
+          </div>
+          <div id="groupsEditor"></div>
+        </div>
+
+        <!-- System -->
+        <div class="panel">
+          <div class="panel-header"><h2>System</h2></div>
+          <div class="system-sections-stacked">
+            <div class="system-section-stacked">
+              <h3>Firebase Sync</h3>
+              <div class="muted" id="firebaseStatus">All data is automatically synced to Firebase.</div>
+              <button class="btn" id="firebaseForceSync">Force Sync Now</button>
+            </div>
+            <div class="system-section-stacked">
+              <h3>Access Control</h3>
+              <div class="muted">Owners: full access. Employees: log services. Viewers: read-only.</div>
+              <div class="system-btn-row">
+                <button class="btn" id="changePasscodeBtn">Change Owner Passcode</button>
+                <button class="btn" id="changeEmpPasscodeBtn">Set Employee Passcode</button>
+              </div>
+            </div>
+            <div class="system-section-stacked">
+              <h3>Data</h3>
+              <div class="system-btn-row">
+                <button class="btn" id="exportJsonBtn">Export JSON</button>
+                <button class="btn" id="importJsonBtn">Import JSON</button>
+                <input type="file" id="importJsonFile" accept=".json" style="display:none;" />
+              </div>
+              <button class="btn danger" id="resetAllBtn">Reset All Data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Service Pricing -->
+      <div class="panel settings-services-panel">
+        <div class="panel-header">
+          <h2>Service Pricing</h2>
+          <div class="panel-actions"><button class="btn small" id="addServiceBtn">+ Service</button></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Service</th>
+                <th>Price</th>
+                <th>Event Price</th>
+                <th>Commission</th>
+                <th>Category</th>
+                <th>Group</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="servicesEditor"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tooltip (cursor-following) -->
+  <div id="dashboardTooltip"></div>
+
+  <!-- Modals -->
+  <div id="modalOverlay" class="modal-overlay" style="display:none;">
+    <div class="modal" id="modalContent"></div>
+  </div>
+  </div><!-- /appRoot -->
+
+</body>
+</html>
