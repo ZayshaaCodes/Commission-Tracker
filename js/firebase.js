@@ -111,15 +111,16 @@ export async function loadFromFirebase() {
         );
       }
 
+      // Merge workClears BEFORE work so pruning uses up-to-date timestamps
+      if (data.workClears !== undefined) {
+        state.workClears = mergeWorkClears(state.workClears, data.workClears);
+      }
+
       // Merge work separately — preserves entries from both sides
       if (data.work !== undefined) {
         state.work = mergeWork(state.work || {}, data.work || {});
       }
-
-      // Merge workClears — max-wins per employee (separate from work)
-      if (data.workClears !== undefined) {
-        state.workClears = mergeWorkClears(state.workClears, data.workClears);
-      }
+      pruneStaleWork();
 
       // For all other keys, accept the server value
       for (const k of Object.keys(data)) {
@@ -372,6 +373,31 @@ function mergeWorkClears(local, remote) {
   return merged;
 }
 
+/**
+ * Remove work entries older than each employee's workClears timestamp.
+ * This prevents stale data from accumulating after merges.
+ */
+function pruneStaleWork() {
+  if (!state.workClears || !state.work) return;
+  for (const empId of Object.keys(state.workClears)) {
+    const clearTs = state.workClears[empId];
+    if (!clearTs || !state.work[empId]) continue;
+    const w = state.work[empId];
+    if (Array.isArray(w.entries)) {
+      w.entries = w.entries.filter(e => (e.timestamp || 0) > clearTs);
+    }
+    if (Array.isArray(w.inventoryLog)) {
+      w.inventoryLog = w.inventoryLog.filter(l => (l.timestamp || 0) > clearTs);
+    }
+    // Rebuild inventory from remaining logs only
+    const inv = {};
+    for (const log of (w.inventoryLog || [])) {
+      inv[log.serviceId] = (inv[log.serviceId] || 0) + (log.quantity || 0);
+    }
+    w.inventory = inv;
+  }
+}
+
 /** Returns true if the merged work contains entries the remote version lacked */
 function workNeedsResync(merged, remote) {
   if (!remote || typeof remote !== 'object') return false;
@@ -391,22 +417,29 @@ function workNeedsResync(merged, remote) {
 function mergeServerState(serverData) {
   if (!serverData || typeof serverData !== 'object') return;
 
-  // Merge work
-  if (serverData.work !== undefined) {
-    state.work = mergeWork(state.work || {}, serverData.work || {});
-  }
-
-  // Merge workClears — max-wins per employee
+  // Merge workClears BEFORE work so pruning uses up-to-date timestamps
   if (serverData.workClears !== undefined) {
     state.workClears = mergeWorkClears(state.workClears, serverData.workClears);
   }
 
-  // Merge ID-based collections — local content wins, server additions kept
+  // Merge work
+  if (serverData.work !== undefined) {
+    state.work = mergeWork(state.work || {}, serverData.work || {});
+  }
+  pruneStaleWork();
+
+  // Merge ID-based collections — if local is unchanged, accept remote as
+  // truth (supports deletions). Only merge when local has pending edits.
   for (const k of MERGE_BY_ID_KEYS) {
     if (serverData[k] !== undefined) {
       const remote = ensureArray(serverData[k]);
-      const local = ensureArray(state[k]);
-      state[k] = mergeByIdOrdered(local, remote);
+      const localJson = JSON.stringify(state[k], replacer);
+      if (localJson === lastPushedJson[k]) {
+        state[k] = remote;
+      } else {
+        const local = ensureArray(state[k]);
+        state[k] = mergeByIdOrdered(local, remote);
+      }
     }
   }
 
@@ -447,32 +480,40 @@ function applyRemoteData(remoteData) {
     if (rv > knownVersion) knownVersion = rv;
   }
 
-  // Deep-merge work - preserves locally-added entries from both tabs
-  if (remoteData.work !== undefined) {
-    const before = JSON.stringify(state.work, replacer);
-    const merged = mergeWork(state.work || {}, remoteData.work || {});
-    if (workNeedsResync(merged, remoteData.work)) keysToResync.add('work');
-    state.work = merged;
-    if (JSON.stringify(state.work, replacer) !== before) anyChange = true;
-  }
-
-  // Merge workClears — max-wins per employee (never resync down)
+  // Merge workClears BEFORE work so pruning uses up-to-date timestamps
   if (remoteData.workClears !== undefined) {
     const before = JSON.stringify(state.workClears, replacer);
     state.workClears = mergeWorkClears(state.workClears, remoteData.workClears);
     if (JSON.stringify(state.workClears, replacer) !== before) anyChange = true;
   }
 
-  // Merge all ID-based collections (employees, services, roles, etc.)
+  // Deep-merge work - preserves locally-added entries from both tabs
+  if (remoteData.work !== undefined) {
+    const before = JSON.stringify(state.work, replacer);
+    const merged = mergeWork(state.work || {}, remoteData.work || {});
+    if (workNeedsResync(merged, remoteData.work)) keysToResync.add('work');
+    state.work = merged;
+    pruneStaleWork();
+    if (JSON.stringify(state.work, replacer) !== before) anyChange = true;
+  }
+
+  // Merge ID-based collections — if local is unchanged, accept remote as
+  // truth (supports deletions). Only merge when local has pending edits.
   for (const k of MERGE_BY_ID_KEYS) {
     if (remoteData[k] !== undefined) {
       const before = JSON.stringify(state[k], replacer);
       const remote = ensureArray(remoteData[k]);
-      const local = ensureArray(state[k]);
-      const merged = mergeByIdOrdered(local, remote);
-      // If local had items the server doesn't, we need to push them back
-      if (merged.length > remote.length) keysToResync.add(k);
-      state[k] = merged;
+      const localJson = JSON.stringify(state[k], replacer);
+      if (localJson === lastPushedJson[k]) {
+        // Local hasn't changed — accept remote as truth (allows deletions)
+        state[k] = remote;
+      } else {
+        // Local has pending edits — merge (preserves local additions)
+        const local = ensureArray(state[k]);
+        const merged = mergeByIdOrdered(local, remote);
+        if (merged.length > remote.length) keysToResync.add(k);
+        state[k] = merged;
+      }
       if (JSON.stringify(state[k], replacer) !== before) anyChange = true;
     }
   }
