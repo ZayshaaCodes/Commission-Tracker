@@ -226,7 +226,7 @@ export function calcEmployeeCommission(empId) {
     const svc = state.services.find(s => s.id === svcId);
     const flat = svc ? (svc.commission || 0) : 0;
     if (flat > 0) {
-      total += flat * qty;
+      total += flat * qty * rate;
     } else {
       total += getServicePrice(svcId) * qty * rate;
     }
@@ -235,7 +235,7 @@ export function calcEmployeeCommission(empId) {
     const svc = state.services.find(s => s.id === entry.serviceId);
     const flat = svc ? (svc.commission || 0) : 0;
     if (flat > 0) {
-      total += flat;
+      total += flat * rate;
     } else {
       total += getServicePrice(entry.serviceId) * rate;
     }

@@ -3,6 +3,7 @@ import { state, getRole, calcEmployeeSales, calcEmployeeCommission,
          calcEmployeeServiceCount, saveState } from './state.js';
 import { showConfirmModal, showEditEmployeeModal } from './modals.js';
 import { render } from './app.js';
+import { flushSync } from './firebase.js';
 
 export function renderEmployees() {
   // Populate role dropdown
@@ -75,6 +76,7 @@ export function renderEmployees() {
         state.employees = state.employees.filter(em => em.id !== deleteBtn.dataset.empDelete);
         delete state.work[deleteBtn.dataset.empDelete];
         render();
+        flushSync();
       });
     }
   };
@@ -88,6 +90,7 @@ export function renderEmployees() {
         if (!emp.active) emp.inactiveDate = Date.now();
         else delete emp.inactiveDate;
         render();
+        flushSync();
       }
     }
   };

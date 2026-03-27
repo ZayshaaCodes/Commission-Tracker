@@ -1,6 +1,7 @@
 import { $, esc, safeAttr, safeColor } from './utils.js';
 import { state, getService, getServiceGroup, saveState } from './state.js';
 import { render, applyBranding } from './app.js';
+import { flushSync } from './firebase.js';
 import defaultLogo from '../Logo_a_ds.png';
 
 const MAX_LOGO_BYTES = 256 * 1024;
@@ -101,6 +102,7 @@ export function renderSettings() {
     if (del) {
       state.roles = state.roles.filter(r => r.id !== del.dataset.roleDelete);
       render();
+      flushSync();
     }
   };
 
@@ -163,6 +165,7 @@ export function renderSettings() {
     if (del) {
       state.services = state.services.filter(s => s.id !== del.dataset.svcDelete);
       render();
+      flushSync();
     }
   };
 
@@ -219,6 +222,7 @@ function renderGroups() {
     if (del) {
       state.serviceGroups = state.serviceGroups.filter(g => g.id !== del.dataset.grpDelete);
       render();
+      flushSync();
     }
   };
 }

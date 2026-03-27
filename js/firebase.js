@@ -305,17 +305,29 @@ function mergeActivityLog(local, remote) {
  * Merge two arrays by `id`, preserving the ORDER from `base` for items
  * that exist in both, appending new-only items at the end.
  * `winner` array's fields win on conflict (local or remote depending on caller).
+ *
+ * `lastPushed` (optional) is the snapshot of the collection at the time of
+ * the last successful push.  Items present in lastPushed but absent from
+ * `base` (remote) were explicitly deleted by another client and must NOT
+ * be resurrected from the local `winner` array.
  */
-function mergeByIdOrdered(winner, base) {
+function mergeByIdOrdered(winner, base, lastPushed) {
   winner = ensureArray(winner);
   base = ensureArray(base);
+
+  // Detect remote deletions: items in lastPushed that are no longer in base
+  const remotelyDeleted = new Set();
+  if (lastPushed) {
+    lastPushed = ensureArray(lastPushed);
+    const baseIds = new Set(base.map(i => i?.id).filter(Boolean));
+    for (const item of lastPushed) {
+      if (item?.id && !baseIds.has(item.id)) remotelyDeleted.add(item.id);
+    }
+  }
+
   const winnerMap = new Map();
   for (const item of winner) {
     if (item && item.id) winnerMap.set(item.id, item);
-  }
-  const baseMap = new Map();
-  for (const item of base) {
-    if (item && item.id) baseMap.set(item.id, item);
   }
   // Start with base order, preferring winner's version of each item
   const result = [];
@@ -325,9 +337,9 @@ function mergeByIdOrdered(winner, base) {
     seen.add(item.id);
     result.push(winnerMap.get(item.id) || item);
   }
-  // Append items only in winner (new additions)
+  // Append items only in winner (new additions), skipping remotely deleted
   for (const item of winner) {
-    if (item && item.id && !seen.has(item.id)) {
+    if (item && item.id && !seen.has(item.id) && !remotelyDeleted.has(item.id)) {
       result.push(item);
     }
   }
@@ -455,7 +467,8 @@ function mergeServerState(serverData) {
         state[k] = remote;
       } else {
         const local = ensureArray(state[k]);
-        state[k] = mergeByIdOrdered(local, remote);
+        const lastPushed = lastPushedJson[k] ? JSON.parse(lastPushedJson[k]) : [];
+        state[k] = mergeByIdOrdered(local, remote, lastPushed);
       }
     }
   }
@@ -541,9 +554,11 @@ function applyRemoteData(remoteData) {
         // Local hasn't changed — accept remote as truth (allows deletions)
         state[k] = remote;
       } else {
-        // Local has pending edits — merge (preserves local additions)
+        // Local has pending edits — merge (preserves local additions,
+        // but respects remote deletions via lastPushed snapshot)
         const local = ensureArray(state[k]);
-        const merged = mergeByIdOrdered(local, remote);
+        const lastPushed = lastPushedJson[k] ? JSON.parse(lastPushedJson[k]) : [];
+        const merged = mergeByIdOrdered(local, remote, lastPushed);
         if (merged.length > remote.length) keysToResync.add(k);
         state[k] = merged;
       }
