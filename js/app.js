@@ -118,6 +118,14 @@ async function init() {
     render();
   };
 
+  // Customize toggle
+  $('customizeToggle').checked = state.customizeEnabled;
+  $('customizeToggle').onchange = () => {
+    state.customizeEnabled = $('customizeToggle').checked;
+    saveState();
+    render();
+  };
+
   // Add employee
   $('addEmployeeBtn').onclick = () => {
     const name = $('newEmpName').value.trim().slice(0, 64);

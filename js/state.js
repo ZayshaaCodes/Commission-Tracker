@@ -79,6 +79,7 @@ if (!Array.isArray(state.activityLog)) state.activityLog = [];
 if (!Array.isArray(state.payoutHistory)) state.payoutHistory = [];
 if (state.shopName === undefined) state.shopName = '';
 if (state.shopLogo === undefined) state.shopLogo = '';
+if (state.customizeEnabled === undefined) state.customizeEnabled = true;
 delete state.sheetsConfig;
 
 // Migrate: add serviceGroups if missing
@@ -210,7 +211,11 @@ export function calcEmployeeSales(empId) {
     total += getServicePrice(svcId) * qty;
   }
   for (const entry of work.entries) {
-    total += getServicePrice(entry.serviceId);
+    if (entry.type === 'customize') {
+      total += entry.amount || 0;
+    } else {
+      total += getServicePrice(entry.serviceId);
+    }
   }
   return total;
 }
@@ -232,12 +237,16 @@ export function calcEmployeeCommission(empId) {
     }
   }
   for (const entry of work.entries) {
-    const svc = state.services.find(s => s.id === entry.serviceId);
-    const flat = svc ? (svc.commission || 0) : 0;
-    if (flat > 0) {
-      total += flat * rate;
+    if (entry.type === 'customize') {
+      total += (entry.amount || 0) * rate;
     } else {
-      total += getServicePrice(entry.serviceId) * rate;
+      const svc = state.services.find(s => s.id === entry.serviceId);
+      const flat = svc ? (svc.commission || 0) : 0;
+      if (flat > 0) {
+        total += flat * rate;
+      } else {
+        total += getServicePrice(entry.serviceId) * rate;
+      }
     }
   }
   return total;

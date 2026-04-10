@@ -309,6 +309,33 @@ export function renderCommissions() {
     svcBtnsEl.appendChild(row);
   }
 
+  // Customization section visibility
+  const customizeSection = document.querySelector('.customize-section');
+  if (customizeSection) customizeSection.style.display = state.customizeEnabled ? '' : 'none';
+
+  // Customization button
+  const customizeBtn = $('customizeBtn');
+  const customizeInput = $('customizeAmount');
+  customizeBtn.onclick = () => {
+    const amount = parseFloat(customizeInput.value);
+    if (!amount || amount <= 0) return;
+    const w = getEmployeeWork(state.selectedEmployeeId);
+    w.entries.push({ id: uid(), type: 'customize', amount, timestamp: Date.now() });
+    const emp = state.employees.find(em => em.id === state.selectedEmployeeId);
+    const role = emp ? getRole(emp.roleId) : null;
+    logActivity({
+      type: 'service',
+      empName: emp ? emp.name : 'Unknown',
+      color: safeColor(role ? role.color : '#666'),
+      serviceName: 'Customize',
+      price: amount
+    });
+    customizeInput.value = '';
+    renderCommissions();
+    saveState();
+    flushSync();
+  };
+
   // Summary
   const sales = calcEmployeeSales(emp.id);
   const commAmt = calcEmployeeCommission(emp.id);
@@ -356,15 +383,25 @@ export function renderCommissions() {
   }
 
   for (const entry of work.entries) {
-    const svc = getService(entry.serviceId);
-    if (svc) {
+    if (entry.type === 'customize') {
       logItems.push({
         type: 'entry',
-        name: svc.name,
-        total: getServicePrice(entry.serviceId),
+        name: 'Customize',
+        total: entry.amount,
         entryId: entry.id,
         timestamp: entry.timestamp
       });
+    } else {
+      const svc = getService(entry.serviceId);
+      if (svc) {
+        logItems.push({
+          type: 'entry',
+          name: svc.name,
+          total: getServicePrice(entry.serviceId),
+          entryId: entry.id,
+          timestamp: entry.timestamp
+        });
+      }
     }
   }
 
@@ -399,14 +436,24 @@ export function renderCommissions() {
       if (entryId) {
         const entry = w.entries.find(en => en.id === entryId);
         if (entry) {
-          const svc = getService(entry.serviceId);
-          logActivity({
-            type: 'remove',
-            empName: emp ? emp.name : 'Unknown',
-            color: safeColor(role ? role.color : '#666'),
-            serviceName: svc ? svc.name : 'Unknown',
-            price: getServicePrice(entry.serviceId)
-          });
+          if (entry.type === 'customize') {
+            logActivity({
+              type: 'remove',
+              empName: emp ? emp.name : 'Unknown',
+              color: safeColor(role ? role.color : '#666'),
+              serviceName: 'Customize',
+              price: entry.amount
+            });
+          } else {
+            const svc = getService(entry.serviceId);
+            logActivity({
+              type: 'remove',
+              empName: emp ? emp.name : 'Unknown',
+              color: safeColor(role ? role.color : '#666'),
+              serviceName: svc ? svc.name : 'Unknown',
+              price: getServicePrice(entry.serviceId)
+            });
+          }
         }
         w.entries = w.entries.filter(en => en.id !== entryId);
       } else if (logId) {

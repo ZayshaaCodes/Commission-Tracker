@@ -118,11 +118,13 @@ export function renderSettings() {
 
   for (const svc of state.services) {
     const tr = document.createElement('tr');
+    tr.dataset.svcRow = svc.id;
     tr.innerHTML = `
-      <td><input value="${esc(svc.name)}" data-svc-name="${safeAttr(svc.id)}" style="width:100%;padding:6px 8px;font-size:13px;" /></td>
-      <td><input type="number" value="${svc.price}" data-svc-price="${safeAttr(svc.id)}" style="width:90px;padding:6px 8px;font-size:13px;" min="0" /></td>
-      <td><input type="number" value="${svc.eventPrice ?? svc.price}" data-svc-event="${safeAttr(svc.id)}" style="width:90px;padding:6px 8px;font-size:13px;" min="0" /></td>
-      <td><input type="number" value="${svc.commission || 0}" data-svc-comm="${safeAttr(svc.id)}" style="width:80px;padding:6px 8px;font-size:13px;" min="0" placeholder="0" /></td>
+      <td class="svc-drag-cell"><span class="svc-drag-handle">&#8942;&#8942;</span></td>
+      <td><input value="${esc(svc.name)}" data-svc-name="${safeAttr(svc.id)}" style="width:150px;padding:6px 8px;font-size:13px;" /></td>
+      <td><input type="number" value="${svc.price}" data-svc-price="${safeAttr(svc.id)}" style="width:60px;padding:6px 8px;font-size:13px;" min="0" /></td>
+      <td><input type="number" value="${svc.eventPrice ?? svc.price}" data-svc-event="${safeAttr(svc.id)}" style="width:60px;padding:6px 8px;font-size:13px;" min="0" /></td>
+      <td><input type="number" value="${svc.commission || 0}" data-svc-comm="${safeAttr(svc.id)}" style="width:60px;padding:6px;font-size:13px;" min="0" placeholder="0" /></td>
       <td>
         <select data-svc-cat="${safeAttr(svc.id)}" style="padding:6px;font-size:12px;">
           <option value="inventory" ${svc.category === 'inventory' ? 'selected' : ''}>Inventory</option>
@@ -168,6 +170,63 @@ export function renderSettings() {
       flushSync();
     }
   };
+
+  // Drag-to-reorder services (bind once)
+  if (!svcEl._dragBound) {
+    svcEl._dragBound = true;
+    let dragRow = null;
+    svcEl.addEventListener('mousedown', (e) => {
+      const handle = e.target.closest('.svc-drag-handle');
+      const tr = e.target.closest('tr[data-svc-row]');
+      if (handle && tr) {
+        tr.draggable = true;
+      } else if (tr) {
+        tr.draggable = false;
+      }
+    });
+    svcEl.addEventListener('dragstart', (e) => {
+      const tr = e.target.closest('tr[data-svc-row]');
+      if (!tr) { e.preventDefault(); return; }
+      dragRow = tr;
+      tr.classList.add('svc-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    svcEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const tr = e.target.closest('tr[data-svc-row]');
+      if (!tr || tr === dragRow) return;
+      svcEl.querySelectorAll('.svc-drop-above,.svc-drop-below').forEach(r => r.classList.remove('svc-drop-above', 'svc-drop-below'));
+      const rect = tr.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      tr.classList.add(e.clientY < mid ? 'svc-drop-above' : 'svc-drop-below');
+    });
+    svcEl.addEventListener('dragleave', (e) => {
+      const tr = e.target.closest('tr[data-svc-row]');
+      if (tr) tr.classList.remove('svc-drop-above', 'svc-drop-below');
+    });
+    svcEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const tr = e.target.closest('tr[data-svc-row]');
+      if (!tr || !dragRow || tr === dragRow) return;
+      const fromId = dragRow.dataset.svcRow;
+      const toId = tr.dataset.svcRow;
+      const fromIdx = state.services.findIndex(s => s.id === fromId);
+      const toIdx = state.services.findIndex(s => s.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = state.services.splice(fromIdx, 1);
+      const rect = tr.getBoundingClientRect();
+      const insertIdx = e.clientY < rect.top + rect.height / 2 ? toIdx : toIdx + (fromIdx < toIdx ? 0 : 1);
+      state.services.splice(insertIdx, 0, moved);
+      saveState();
+      flushSync();
+      renderSettings();
+    });
+    svcEl.addEventListener('dragend', () => {
+      if (dragRow) dragRow.classList.remove('svc-dragging');
+      dragRow = null;
+      svcEl.querySelectorAll('.svc-drop-above,.svc-drop-below').forEach(r => r.classList.remove('svc-drop-above', 'svc-drop-below'));
+    });
+  }
 
   // Branding
   bindBranding();

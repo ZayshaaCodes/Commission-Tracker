@@ -137,6 +137,15 @@
             <h3>Log Service</h3>
             <div id="serviceButtons" class="service-buttons"></div>
           </div>
+
+          <div class="customize-section">
+            <h3>Customization</h3>
+            <div class="customize-row">
+              <span class="customize-dollar">$</span>
+              <input type="number" id="customizeAmount" class="customize-input" placeholder="0.00" min="0" step="0.01">
+              <button class="btn primary" id="customizeBtn">Add Customize</button>
+            </div>
+          </div>
         </div>
 
         <div class="panel">
@@ -256,6 +265,14 @@
             </label>
             <span class="muted">Uses event pricing for services when enabled</span>
           </div>
+          <div class="control-group">
+            <label for="customizeToggle">Customization Entry</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="customizeToggle" />
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="muted">Allows logging custom dollar amounts on commission sheets</span>
+          </div>
         </div>
 
         <!-- Commission Rates -->
@@ -316,10 +333,11 @@
           <table>
             <thead>
               <tr>
+                <th class="svc-drag-cell"></th>
                 <th>Service</th>
                 <th>Price</th>
                 <th>Event Price</th>
-                <th>Commission</th>
+                <th>Comm-<br>ission</th>
                 <th>Category</th>
                 <th>Group</th>
                 <th></th>

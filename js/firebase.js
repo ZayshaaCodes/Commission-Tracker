@@ -146,11 +146,20 @@ export async function loadFromFirebase() {
       $('firebaseStatus').textContent = 'Could not reach Firebase: ' + err.message + '. Using local data.';
       $('firebaseStatus').style.color = '#f87171';
     }
+    // Snapshot current state as baseline so stale localStorage
+    // isn't treated as dirty edits when the connection recovers.
+    // Without this, every key looks "modified" and local-wins
+    // during merge-before-push, overwriting newer server data.
+    snapshotAllKeys();
     return false;
   }
 }
 
-// === PUSH (version-checked, merge-before-push) ===
+// === PUSH (ETag-guarded, merge-before-push) ===
+// Uses Firebase's ETag conditional PUT on _version as an atomic compare-and-swap.
+// If another client pushed between our read and write, we get 412 and retry after merging.
+const MAX_PUSH_RETRIES = 3;
+
 export async function pushToFirebase() {
   if (syncInFlight || !initialLoadDone) return;
 
@@ -161,12 +170,17 @@ export async function pushToFirebase() {
   try {
     updateSyncBadge('Saving...', false);
 
-    // 1) Check server version — if ahead, fetch + merge first
-    const verRes = await fetch(shopPath('state/_version.json'));
-    if (verRes.ok) {
-      const serverVer = (await verRes.json()) || 0;
+    let retries = 0;
+    while (retries < MAX_PUSH_RETRIES) {
+      // 1) Fetch current _version WITH its ETag
+      const verRes = await fetch(shopPath('state/_version.json'), {
+        headers: { 'X-Firebase-ETag': 'true' }
+      });
+      const serverETag = verRes.headers.get('ETag');
+      const serverVer = verRes.ok ? ((await verRes.json()) || 0) : knownVersion;
+
+      // 2) If server is ahead, fetch full state and merge first
       if (serverVer > knownVersion) {
-        // Server is ahead — another client pushed. Fetch full state and merge.
         const fullRes = await fetch(shopPath('state.json'));
         if (fullRes.ok) {
           const serverData = await fullRes.json();
@@ -176,81 +190,103 @@ export async function pushToFirebase() {
           }
         }
       }
-    }
 
-    // 2) Re-check what's still dirty after the merge
-    const stillChanged = getChangedKeys();
-    if (stillChanged.length === 0) {
-      updateSyncBadge('Synced', true);
-      return;
-    }
-
-    // 3) Increment version and push
-    const newVersion = knownVersion + 1;
-    state._version = newVersion;
-
-    const topPatch = { _version: newVersion };
-    let workPatch = null;
-    let workClearsPatch = null;
-
-    for (const k of stillChanged) {
-      if (k === '_version') continue;
-      const val = JSON.parse(JSON.stringify(state[k], replacer));
-      if (k === 'work') {
-        workPatch = val;
-      } else if (k === 'workClears') {
-        workClearsPatch = val;
-      } else {
-        topPatch[k] = val;
+      // 3) Re-check what's still dirty after the merge
+      const stillChanged = getChangedKeys();
+      if (stillChanged.length === 0) {
+        updateSyncBadge('Synced', true);
+        return;
       }
-    }
 
-    const requests = [];
+      // 4) Attempt conditional PUT on _version (atomic compare-and-swap)
+      const newVersion = knownVersion + 1;
+      const claimRes = await fetch(shopPath('state/_version.json'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(serverETag ? { 'if-match': serverETag } : {})
+        },
+        body: JSON.stringify(newVersion)
+      });
 
-    if (Object.keys(topPatch).length > 0) {
-      requests.push(
-        fetch(shopPath('state.json'), {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(topPatch)
-        })
-      );
-    }
+      if (claimRes.status === 412) {
+        // Another client wrote between our read and write — retry after merge
+        retries++;
+        if (retries < MAX_PUSH_RETRIES) {
+          updateSyncBadge('Retrying sync...', false);
+          continue;
+        }
+        throw new Error('Version conflict after ' + MAX_PUSH_RETRIES + ' retries');
+      }
+      if (!claimRes.ok) throw new Error('Version PUT HTTP ' + claimRes.status);
 
-    if (workPatch) {
-      requests.push(
-        fetch(shopPath('state/work.json'), {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(workPatch)
-        })
-      );
-    }
+      // 5) Version claimed — now push the actual data
+      state._version = newVersion;
 
-    // Push workClears at its own path so Firebase shallow-merges per employee
-    // — old clients can't overwrite this because they never touch /state/workClears
-    if (workClearsPatch) {
-      requests.push(
-        fetch(shopPath('state/workClears.json'), {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(workClearsPatch)
-        })
-      );
-    }
+      const topPatch = {};
+      let workPatch = null;
+      let workClearsPatch = null;
 
-    const results = await Promise.all(requests);
-    for (const res of results) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-    }
+      for (const k of stillChanged) {
+        if (k === '_version') continue;
+        const val = JSON.parse(JSON.stringify(state[k], replacer));
+        if (k === 'work') {
+          workPatch = val;
+        } else if (k === 'workClears') {
+          workClearsPatch = val;
+        } else {
+          topPatch[k] = val;
+        }
+      }
 
-    // Mark pushed keys as clean and update known version
-    knownVersion = newVersion;
-    for (const k of stillChanged) {
-      lastPushedJson[k] = JSON.stringify(state[k], replacer);
+      const requests = [];
+
+      if (Object.keys(topPatch).length > 0) {
+        requests.push(
+          fetch(shopPath('state.json'), {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(topPatch)
+          })
+        );
+      }
+
+      if (workPatch) {
+        requests.push(
+          fetch(shopPath('state/work.json'), {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(workPatch)
+          })
+        );
+      }
+
+      // Push workClears at its own path so Firebase shallow-merges per employee
+      // — old clients can't overwrite this because they never touch /state/workClears
+      if (workClearsPatch) {
+        requests.push(
+          fetch(shopPath('state/workClears.json'), {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(workClearsPatch)
+          })
+        );
+      }
+
+      const results = await Promise.all(requests);
+      for (const res of results) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+      }
+
+      // Mark pushed keys as clean and update known version
+      knownVersion = newVersion;
+      for (const k of stillChanged) {
+        lastPushedJson[k] = JSON.stringify(state[k], replacer);
+      }
+      lastPushedJson['_version'] = JSON.stringify(newVersion);
+      updateSyncBadge('Synced', true);
+      return; // success — exit the retry loop
     }
-    lastPushedJson['_version'] = JSON.stringify(newVersion);
-    updateSyncBadge('Synced', true);
   } catch (err) {
     updateSyncBadge('Sync Error', false);
     scheduleSync();
@@ -437,7 +473,8 @@ function mergeServerState(serverData) {
   }
 
   // Work: per-employee clean/dirty check. Accept remote for employees
-  // the user hasn't touched, keep local for employees with pending edits.
+  // the user hasn't touched. For dirty employees, merge at the ENTRY level
+  // (not all-or-nothing) so that entries added by other clients survive.
   if (serverData.work !== undefined) {
     const remoteWork = serverData.work || {};
     if (!state.work) state.work = {};
@@ -451,8 +488,24 @@ function mergeServerState(serverData) {
       if (localEmpJson === lastPushedEmpJson) {
         // Clean locally — accept remote version
         state.work[empId] = remoteWork[empId];
+      } else {
+        // Dirty locally — merge at entry level to preserve both sides
+        const local = state.work[empId] || { inventory: {}, entries: [], inventoryLog: [] };
+        const remote = remoteWork[empId] || { inventory: {}, entries: [], inventoryLog: [] };
+        state.work[empId] = {
+          inventory: { ...(remote.inventory || {}), ...(local.inventory || {}) },
+          entries: mergeById(ensureArray(local.entries), ensureArray(remote.entries)),
+          inventoryLog: mergeById(ensureArray(local.inventoryLog), ensureArray(remote.inventoryLog)),
+        };
       }
-      // else: keep local — user edited this employee's work
+    }
+
+    // Handle employees whose work was cleared on the server:
+    // present locally and in lastPushed, but absent from remote → deleted remotely
+    for (const empId of Object.keys(state.work)) {
+      if (!(empId in remoteWork) && empId in lastPushedWork) {
+        delete state.work[empId];
+      }
     }
   }
   pruneStaleWork();
@@ -518,8 +571,8 @@ function applyRemoteData(remoteData) {
   }
 
   // Work: for each employee in the remote data, accept remote as truth if
-  // that employee's local work is clean. If dirty, keep local and push it.
-  // This handles both full state updates and partial SSE updates correctly.
+  // that employee's local work is clean. If dirty, merge at entry level
+  // so both local additions and remote additions survive.
   if (remoteData.work !== undefined) {
     const before = JSON.stringify(state.work, replacer);
     const remoteWork = remoteData.work || {};
@@ -535,10 +588,26 @@ function applyRemoteData(remoteData) {
         // This employee's work is clean locally — accept remote
         state.work[empId] = remoteWork[empId];
       } else {
-        // This employee's work has local edits — keep local, push later
+        // This employee's work has local edits — merge at entry level
+        const local = state.work[empId] || { inventory: {}, entries: [], inventoryLog: [] };
+        const remote = remoteWork[empId] || { inventory: {}, entries: [], inventoryLog: [] };
+        state.work[empId] = {
+          inventory: { ...(remote.inventory || {}), ...(local.inventory || {}) },
+          entries: mergeById(ensureArray(local.entries), ensureArray(remote.entries)),
+          inventoryLog: mergeById(ensureArray(local.inventoryLog), ensureArray(remote.inventoryLog)),
+        };
         keysToResync.add('work');
       }
     }
+
+    // Handle employees whose work was cleared on the server:
+    // present locally and in lastPushed, but absent from remote → deleted remotely
+    for (const empId of Object.keys(state.work)) {
+      if (!(empId in remoteWork) && empId in lastPushedWork) {
+        delete state.work[empId];
+      }
+    }
+
     pruneStaleWork();
     if (JSON.stringify(state.work, replacer) !== before) anyChange = true;
   }
