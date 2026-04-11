@@ -600,13 +600,10 @@ function applyRemoteData(remoteData) {
       }
     }
 
-    // Handle employees whose work was cleared on the server:
-    // present locally and in lastPushed, but absent from remote → deleted remotely
-    for (const empId of Object.keys(state.work)) {
-      if (!(empId in remoteWork) && empId in lastPushedWork) {
-        delete state.work[empId];
-      }
-    }
+    // NOTE: No remote-deletion loop here. SSE events can be partial
+    // (e.g. only one employee in a PATCH), so absence from remoteWork
+    // does NOT mean deleted. Deletions are handled by mergeServerState
+    // which always has the full server snapshot.
 
     pruneStaleWork();
     if (JSON.stringify(state.work, replacer) !== before) anyChange = true;
