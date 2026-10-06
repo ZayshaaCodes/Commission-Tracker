@@ -350,7 +350,7 @@ async function initShopPicker() {
     const code = codeInput.value.trim().toUpperCase();
     if (!raw) { errorEl.textContent = 'Enter a shop name.'; return; }
     if (!code) { errorEl.textContent = 'Enter an invite code.'; return; }
-    const slug = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const slug = raw.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     if (!slug || slug.length < 2) { errorEl.textContent = 'Name must be at least 2 characters (letters/numbers).'; return; }
     if (slug.length > 48) { errorEl.textContent = 'Name is too long.'; return; }
     errorEl.textContent = '';

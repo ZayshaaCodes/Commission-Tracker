@@ -6,7 +6,20 @@ const params = new URLSearchParams(window.location.search);
 const raw = params.get('shop') || '';
 const SHOP_RE = /^[a-z0-9_-]{1,48}$/;
 
-export const shopId = SHOP_RE.test(raw.toLowerCase()) ? raw.toLowerCase() : null;
+// Renamed shops: old slug -> new slug
+const SHOP_ALIASES = {
+  'benny-s': 'bennys',
+};
+
+const id = SHOP_RE.test(raw.toLowerCase()) ? raw.toLowerCase() : null;
+
+if (id && SHOP_ALIASES[id]) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('shop', SHOP_ALIASES[id]);
+  window.location.replace(url.toString());
+}
+
+export const shopId = id && (SHOP_ALIASES[id] || id);
 
 export function getShopUrl(id) {
   const url = new URL(window.location.href);
