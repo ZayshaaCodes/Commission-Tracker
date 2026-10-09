@@ -41,6 +41,9 @@
   .svc-row { flex-direction: column; gap: 4px; }
   .svc-row-label { width: auto; padding-top: 0; }
 
+  .payout-row { flex-wrap: wrap; }
+  .payout-row .payout-name { flex-basis: 100%; }
+
   .emp-row {
     flex-wrap: wrap;
     padding: 10px;

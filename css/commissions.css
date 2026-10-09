@@ -228,9 +228,46 @@
 /* Flat Payouts */
 .payouts-section { margin-bottom: 16px; }
 
-.service-btn.payout-btn {
-  border-color: #f59e0b55;
-  background-color: #f59e0b12;
+.payout-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.payout-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #f59e0b55;
+  background: #f59e0b12;
+  border-radius: 6px;
+}
+
+.payout-row .payout-name { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; }
+.payout-row .payout-unit { font-size: 11px; color: #888; white-space: nowrap; }
+
+.payout-row .payout-qty {
+  width: 70px;
+  padding: 6px 8px;
+  background: #3a3a3a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 13px;
+  font-family: inherit;
+  text-align: center;
+}
+
+.payout-row .payout-qty:focus { outline: none; border-color: #f59e0b; }
+
+.payout-row .payout-total {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fbbf24;
+  min-width: 70px;
+  text-align: right;
+  white-space: nowrap;
 }
 
 /* Customization Section */

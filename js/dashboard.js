@@ -1,6 +1,6 @@
 import { $, money, esc, toGMT8, timeAgo, safeColor, safeAttr } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWorkView,
-         isFlatPayout, getFlatPayout, getEntrySale, calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
+         isFlatPayout, getEntryQty, getEntryPayout, getEntrySale, calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
 import { isUnlocked, getAccessLevel } from './auth.js';
 import { render } from './app.js';
 
@@ -118,7 +118,8 @@ export function renderDashboard() {
       for (const entry of work.entries) {
         const svc = getService(entry.serviceId);
         if (!svc) continue;
-        allItems.push({ text: `${svc.name} - ${money(entryAmount(svc))}`, time: entry.timestamp });
+        const qty = isFlatPayout(svc) ? getEntryQty(entry) : 1;
+        allItems.push({ text: `${svc.name}${qty > 1 ? ' x' + qty : ''} - ${money(entryAmount(svc, entry))}`, time: entry.timestamp });
       }
       allItems.sort((a, b) => (b.time || 0) - (a.time || 0));
       tipHtml = allItems.map(i => `<div>${esc(i.text)}${i.time ? ` <span class="muted">${timeAgo(i.time)}</span>` : ''}</div>`).join('');
@@ -135,8 +136,8 @@ export function renderDashboard() {
         const svc = getService(entry.serviceId);
         if (!svc) continue;
         svcCounts[entry.serviceId] = (svcCounts[entry.serviceId] || { name: svc.name, count: 0, total: 0 });
-        svcCounts[entry.serviceId].count++;
-        svcCounts[entry.serviceId].total += entryAmount(svc);
+        svcCounts[entry.serviceId].count += isFlatPayout(svc) ? getEntryQty(entry) : 1;
+        svcCounts[entry.serviceId].total += entryAmount(svc, entry);
       }
       for (const s of Object.values(svcCounts)) {
         tipLines.push(`${s.name} x${s.count} - ${money(s.total)}`);
@@ -214,8 +215,8 @@ export function renderDashboard() {
 }
 
 // Amount shown for a logged service entry: sale price, or fixed amount for flat payouts
-function entryAmount(svc) {
-  return isFlatPayout(svc) ? getFlatPayout(svc.id) : getServicePrice(svc.id);
+function entryAmount(svc, entry) {
+  return isFlatPayout(svc) ? getEntryPayout(entry) : getServicePrice(svc.id);
 }
 
 // --- ACTIVITY TIMELINE ---

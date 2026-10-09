@@ -172,6 +172,16 @@ export function getFlatPayout(serviceId) {
   return isFlatPayout(svc) ? (svc.price || 0) : 0;
 }
 
+// Units in a work entry (flat payouts can log many at once, e.g. 30 gold bars)
+export function getEntryQty(entry) {
+  return Math.max(1, Math.floor(entry.qty) || 1);
+}
+
+/** Total flat payout for a single work entry (0 if not a flat payout) */
+export function getEntryPayout(entry) {
+  return getFlatPayout(entry.serviceId) * getEntryQty(entry);
+}
+
 /** Sale value a single work entry contributes to gross (flat payouts are not sales) */
 export function getEntrySale(entry) {
   if (entry.type === 'customize') return entry.amount || 0;
@@ -255,7 +265,7 @@ export function calcEmployeeCommission(empId) {
     } else {
       const svc = state.services.find(s => s.id === entry.serviceId);
       if (isFlatPayout(svc)) {
-        total += svc.price || 0;
+        total += getEntryPayout(entry);
         continue;
       }
       const flat = svc ? (svc.commission || 0) : 0;
@@ -274,7 +284,7 @@ export function calcEmployeeFlatPayout(empId) {
   const work = getEmployeeWorkView(empId);
   let total = 0;
   for (const entry of work.entries) {
-    if (entry.type !== 'customize') total += getFlatPayout(entry.serviceId);
+    if (entry.type !== 'customize') total += getEntryPayout(entry);
   }
   return total;
 }

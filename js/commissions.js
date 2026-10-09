@@ -1,9 +1,10 @@
 import { $, money, uid, esc, timeAgo, safeColor, safeAttr } from './utils.js';
 import { state, getRole, getService, getServiceGroup, getServicePrice, getEmployeeWork,
          getEmployeeWorkView, calcEmployeeSales, calcEmployeeCommission, calcEmployeeFlatPayout,
-         isFlatPayout, getFlatPayout, saveState, logActivity } from './state.js';
+         isFlatPayout, getFlatPayout, getEntryQty, getEntryPayout, saveState, logActivity } from './state.js';
 import { getAccessLevel } from './auth.js';
 import { flushSync } from './firebase.js';
+import { showConfirmModal } from './modals.js';
 
 // Module-level handler so removeEventListener can find the same reference
 function closeDropdown(e) {
@@ -311,35 +312,7 @@ export function renderCommissions() {
   }
 
   // Flat payouts (material runs, gold, etc.) - hidden when none are configured
-  const flatSvcs = state.services.filter(isFlatPayout);
-  const payoutsSection = document.querySelector('.payouts-section');
-  const payoutBtnsEl = $('flatPayoutButtons');
-  payoutsSection.style.display = flatSvcs.length ? '' : 'none';
-  payoutBtnsEl.innerHTML = '';
-
-  for (const svc of flatSvcs) {
-    const payout = getFlatPayout(svc.id);
-    const btn = document.createElement('button');
-    btn.className = 'service-btn payout-btn';
-    btn.innerHTML = `<span class="svc-name">${esc(svc.name)}</span><span class="svc-price">${money(payout)}</span>`;
-    btn.onclick = () => {
-      const w = getEmployeeWork(state.selectedEmployeeId);
-      w.entries.push({ id: uid(), serviceId: svc.id, timestamp: Date.now() });
-      const emp = state.employees.find(em => em.id === state.selectedEmployeeId);
-      const role = emp ? getRole(emp.roleId) : null;
-      logActivity({
-        type: 'flat-payout',
-        empName: emp ? emp.name : 'Unknown',
-        color: safeColor(role ? role.color : '#666'),
-        serviceName: svc.name,
-        price: payout
-      });
-      renderCommissions();
-      saveState();
-      flushSync();
-    };
-    payoutBtnsEl.appendChild(btn);
-  }
+  renderFlatPayouts();
 
   // Customization section visibility
   const customizeSection = document.querySelector('.customize-section');
@@ -433,10 +406,11 @@ export function renderCommissions() {
       const svc = getService(entry.serviceId);
       if (svc) {
         const flat = isFlatPayout(svc);
+        const qty = flat ? getEntryQty(entry) : 1;
         logItems.push({
           type: 'entry',
-          name: svc.name,
-          total: flat ? getFlatPayout(entry.serviceId) : getServicePrice(entry.serviceId),
+          name: qty > 1 ? `${svc.name} ×${qty}` : svc.name,
+          total: flat ? getEntryPayout(entry) : getServicePrice(entry.serviceId),
           payout: flat,
           entryId: entry.id,
           timestamp: entry.timestamp
@@ -486,12 +460,14 @@ export function renderCommissions() {
             });
           } else {
             const svc = getService(entry.serviceId);
+            const flat = isFlatPayout(svc);
+            const qty = flat ? getEntryQty(entry) : 1;
             logActivity({
               type: 'remove',
               empName: emp ? emp.name : 'Unknown',
               color: safeColor(role ? role.color : '#666'),
-              serviceName: svc ? svc.name : 'Unknown',
-              price: isFlatPayout(svc) ? getFlatPayout(entry.serviceId) : getServicePrice(entry.serviceId)
+              serviceName: svc ? (qty > 1 ? `${svc.name} ×${qty}` : svc.name) : 'Unknown',
+              price: flat ? getEntryPayout(entry) : getServicePrice(entry.serviceId)
             });
           }
         }
@@ -516,5 +492,95 @@ export function renderCommissions() {
       saveState();
       flushSync();
     };
+  }
+}
+
+// === FLAT PAYOUTS ===
+const FLAT_CONFIRM_OVER = 10000;
+const MAX_FLAT_QTY = 9999;
+let flatRowsKey = null;
+
+// Rows are only rebuilt when the payout items change, so a quantity being
+// typed isn't wiped when another device syncs and the sheet re-renders.
+function renderFlatPayouts() {
+  const flatSvcs = state.services.filter(isFlatPayout);
+  const section = document.querySelector('.payouts-section');
+  const rowsEl = $('flatPayoutRows');
+  section.style.display = flatSvcs.length ? '' : 'none';
+
+  const key = JSON.stringify(flatSvcs.map(s => [s.id, s.name, s.price]));
+  if (key !== flatRowsKey) {
+    flatRowsKey = key;
+    rowsEl.innerHTML = flatSvcs.map(svc => `
+      <div class="payout-row">
+        <span class="payout-name">${esc(svc.name)}</span>
+        <span class="payout-unit">${money(getFlatPayout(svc.id))}</span>
+        <input type="number" class="payout-qty" data-payout-qty="${safeAttr(svc.id)}" value="1" min="1" max="${MAX_FLAT_QTY}" step="1" />
+        <span class="payout-total" data-payout-total="${safeAttr(svc.id)}">${money(getFlatPayout(svc.id))}</span>
+        <button class="btn primary small" data-payout-add="${safeAttr(svc.id)}">Add</button>
+      </div>
+    `).join('');
+  }
+
+  if (rowsEl._bound) return;
+  rowsEl._bound = true;
+
+  const qtyOf = svcId => {
+    const input = rowsEl.querySelector(`[data-payout-qty="${svcId}"]`);
+    const qty = Math.floor(parseFloat(input.value));
+    return qty >= 1 && qty <= MAX_FLAT_QTY ? qty : 0;
+  };
+
+  rowsEl.addEventListener('input', (e) => {
+    const input = e.target.closest('[data-payout-qty]');
+    if (!input) return;
+    const svcId = input.dataset.payoutQty;
+    rowsEl.querySelector(`[data-payout-total="${svcId}"]`).textContent = money(getFlatPayout(svcId) * qtyOf(svcId));
+  });
+
+  rowsEl.addEventListener('keydown', (e) => {
+    const input = e.target.closest('[data-payout-qty]');
+    if (input && e.key === 'Enter') addFlatPayout(input.dataset.payoutQty, qtyOf(input.dataset.payoutQty));
+  });
+
+  rowsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-payout-add]');
+    if (btn) addFlatPayout(btn.dataset.payoutAdd, qtyOf(btn.dataset.payoutAdd));
+  });
+}
+
+function addFlatPayout(svcId, qty) {
+  const svc = getService(svcId);
+  if (!svc || !qty) return;
+  const total = getFlatPayout(svcId) * qty;
+  const label = qty > 1 ? `${svc.name} ×${qty}` : svc.name;
+
+  const commit = () => {
+    const emp = state.employees.find(em => em.id === state.selectedEmployeeId);
+    if (!emp) return;
+    const w = getEmployeeWork(emp.id);
+    w.entries.push({ id: uid(), serviceId: svcId, qty, timestamp: Date.now() });
+    const role = getRole(emp.roleId);
+    logActivity({
+      type: 'flat-payout',
+      empName: emp.name,
+      color: safeColor(role ? role.color : '#666'),
+      serviceName: label,
+      price: total
+    });
+    // Reset this row back to 1
+    const input = $('flatPayoutRows').querySelector(`[data-payout-qty="${safeAttr(svcId)}"]`);
+    if (input) input.value = 1;
+    const totalEl = $('flatPayoutRows').querySelector(`[data-payout-total="${safeAttr(svcId)}"]`);
+    if (totalEl) totalEl.textContent = money(getFlatPayout(svcId));
+    renderCommissions();
+    saveState();
+    flushSync();
+  };
+
+  if (total > FLAT_CONFIRM_OVER) {
+    showConfirmModal(`Log ${money(total)} for ${label}?`, commit);
+  } else {
+    commit();
   }
 }
