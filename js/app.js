@@ -164,7 +164,7 @@ async function init() {
     if (!emp) return;
     const gross = calcEmployeeSales(emp.id);
     const comm = calcEmployeeCommission(emp.id);
-    if (gross === 0) {
+    if (gross === 0 && comm === 0) {
       showConfirmModal('Clear all logged services for this employee?', () => {
         if (!state.workClears) state.workClears = {};
         state.workClears[state.selectedEmployeeId] = Date.now();

@@ -1,6 +1,6 @@
 import { $, money, esc, toGMT8, timeAgo, safeColor, safeAttr } from './utils.js';
 import { state, getRole, getService, getServicePrice, getEmployeeWorkView,
-         calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
+         isFlatPayout, getFlatPayout, getEntrySale, calcEmployeeSales, calcEmployeeCommission, calcEmployeeServiceCount, saveState } from './state.js';
 import { isUnlocked, getAccessLevel } from './auth.js';
 import { render } from './app.js';
 
@@ -118,7 +118,7 @@ export function renderDashboard() {
       for (const entry of work.entries) {
         const svc = getService(entry.serviceId);
         if (!svc) continue;
-        allItems.push({ text: `${svc.name} - ${money(getServicePrice(entry.serviceId))}`, time: entry.timestamp });
+        allItems.push({ text: `${svc.name} - ${money(entryAmount(svc))}`, time: entry.timestamp });
       }
       allItems.sort((a, b) => (b.time || 0) - (a.time || 0));
       tipHtml = allItems.map(i => `<div>${esc(i.text)}${i.time ? ` <span class="muted">${timeAgo(i.time)}</span>` : ''}</div>`).join('');
@@ -136,7 +136,7 @@ export function renderDashboard() {
         if (!svc) continue;
         svcCounts[entry.serviceId] = (svcCounts[entry.serviceId] || { name: svc.name, count: 0, total: 0 });
         svcCounts[entry.serviceId].count++;
-        svcCounts[entry.serviceId].total += getServicePrice(entry.serviceId);
+        svcCounts[entry.serviceId].total += entryAmount(svc);
       }
       for (const s of Object.values(svcCounts)) {
         tipLines.push(`${s.name} x${s.count} - ${money(s.total)}`);
@@ -213,6 +213,11 @@ export function renderDashboard() {
   }
 }
 
+// Amount shown for a logged service entry: sale price, or fixed amount for flat payouts
+function entryAmount(svc) {
+  return isFlatPayout(svc) ? getFlatPayout(svc.id) : getServicePrice(svc.id);
+}
+
 // --- ACTIVITY TIMELINE ---
 export function renderTimeline() {
   const el = $('activityTimeline');
@@ -225,7 +230,9 @@ export function renderTimeline() {
     const role = getRole(emp.roleId);
     const color = role ? safeColor(role.color) : '#666';
     for (const entry of work.entries) {
-      allEntries.push({ timestamp: entry.timestamp, serviceId: entry.serviceId, color });
+      // Flat payouts are, not revenue
+      if (isFlatPayout(getService(entry.serviceId))) continue;
+      allEntries.push({ timestamp: entry.timestamp, sale: getEntrySale(entry), color });
     }
   }
 
@@ -256,7 +263,7 @@ export function renderTimeline() {
     const entryGMT8 = toGMT8(entry.timestamp).getTime();
     for (const day of days) {
       if (entryGMT8 >= day.start && entryGMT8 < day.end) {
-        day.revenue += getServicePrice(entry.serviceId);
+        day.revenue += entry.sale;
         day.count++;
       }
     }

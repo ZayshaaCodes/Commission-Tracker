@@ -191,3 +191,10 @@ tr.svc-drop-above td {
 tr.svc-drop-below td {
   box-shadow: inset 0 -2px 0 #60a5fa;
 }
+
+/* Flat payout rows: event price / commission / group don't apply */
+.svc-flat-row input:disabled,
+.svc-flat-row select:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

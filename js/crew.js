@@ -34,13 +34,13 @@ export function renderCrew() {
   const payoutBtn = $('weeklyPayoutBtn');
   if (payoutBtn) {
     payoutBtn.onclick = () => {
-      if (totalSales === 0) return;
+      if (totalSales === 0 && totalCommission === 0) return;
       showConfirmModal('Process weekly payout? This will log all current earnings and clear employee data.', () => {
         const lines = [];
         for (const emp of state.employees) {
           const gross = calcEmployeeSales(emp.id);
           const comm = calcEmployeeCommission(emp.id);
-          if (gross === 0) continue;
+          if (gross === 0 && comm === 0) continue;
           const role = getRole(emp.roleId);
           lines.push({ empName: emp.name, roleId: emp.roleId, color: safeColor(role ? role.color : '#666'), gross, commission: comm });
         }
@@ -109,6 +109,15 @@ export function renderCrew() {
                 <span class="af-name">${esc(item.empName)}</span>
                 <span class="af-action">${esc(item.serviceName)}</span>
                 <span class="af-price text-green">+${money(item.price)}</span>
+                <span class="af-time">${timeAgo(item.timestamp)}</span>
+              </div>`;
+          case 'flat-payout':
+            return `
+              <div class="af-item">
+                <span class="af-dot" style="background:${item.color}"></span>
+                <span class="af-name">${esc(item.empName)}</span>
+                <span class="af-action">${esc(item.serviceName)}</span>
+                <span class="af-price text-amber">${money(item.price)}</span>
                 <span class="af-time">${timeAgo(item.timestamp)}</span>
               </div>`;
           case 'inventory':

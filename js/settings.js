@@ -1,5 +1,5 @@
 import { $, esc, safeAttr, safeColor } from './utils.js';
-import { state, getService, getServiceGroup, saveState } from './state.js';
+import { state, getService, getServiceGroup, isFlatPayout, saveState } from './state.js';
 import { render, applyBranding } from './app.js';
 import { flushSync } from './firebase.js';
 import defaultLogo from '../Logo_a_ds.png';
@@ -117,22 +117,27 @@ export function renderSettings() {
     .join('');
 
   for (const svc of state.services) {
+    // Flat payouts pay a fixed amount (Price column) - event price, commission and group don't apply
+    const flat = isFlatPayout(svc);
+    const na = flat ? 'disabled title="Not used for flat payouts"' : '';
     const tr = document.createElement('tr');
     tr.dataset.svcRow = svc.id;
+    if (flat) tr.classList.add('svc-flat-row');
     tr.innerHTML = `
       <td class="svc-drag-cell"><span class="svc-drag-handle">&#8942;&#8942;</span></td>
       <td><input value="${esc(svc.name)}" data-svc-name="${safeAttr(svc.id)}" style="width:150px;padding:6px 8px;font-size:13px;" /></td>
-      <td><input type="number" value="${svc.price}" data-svc-price="${safeAttr(svc.id)}" style="width:60px;padding:6px 8px;font-size:13px;" min="0" /></td>
-      <td><input type="number" value="${svc.eventPrice ?? svc.price}" data-svc-event="${safeAttr(svc.id)}" style="width:60px;padding:6px 8px;font-size:13px;" min="0" /></td>
-      <td><input type="number" value="${svc.commission || 0}" data-svc-comm="${safeAttr(svc.id)}" style="width:60px;padding:6px;font-size:13px;" min="0" placeholder="0" /></td>
+      <td><input type="number" value="${svc.price}" data-svc-price="${safeAttr(svc.id)}" style="width:60px;padding:6px 8px;font-size:13px;" min="0" ${flat ? 'title="Payout per unit"' : ''} /></td>
+      <td><input type="number" value="${svc.eventPrice ?? svc.price}" data-svc-event="${safeAttr(svc.id)}" style="width:60px;padding:6px 8px;font-size:13px;" min="0" ${na} /></td>
+      <td><input type="number" value="${svc.commission || 0}" data-svc-comm="${safeAttr(svc.id)}" style="width:60px;padding:6px;font-size:13px;" min="0" placeholder="0" ${na} /></td>
       <td>
         <select data-svc-cat="${safeAttr(svc.id)}" style="padding:6px;font-size:12px;">
           <option value="inventory" ${svc.category === 'inventory' ? 'selected' : ''}>Inventory</option>
           <option value="service" ${svc.category === 'service' ? 'selected' : ''}>Service</option>
+          <option value="flat" ${flat ? 'selected' : ''}>Flat Payout</option>
         </select>
       </td>
       <td>
-        <select data-svc-group="${safeAttr(svc.id)}" style="padding:6px;font-size:12px;">
+        <select data-svc-group="${safeAttr(svc.id)}" style="padding:6px;font-size:12px;" ${na}>
           <option value="" ${!svc.group ? 'selected' : ''}>None</option>
           ${groupOptions}
         </select>
@@ -157,9 +162,13 @@ export function renderSettings() {
     if (priceIn) { const s = getService(priceIn.dataset.svcPrice); if (s) s.price = Math.max(0, parseFloat(priceIn.value) || 0); }
     if (eventIn) { const s = getService(eventIn.dataset.svcEvent); if (s) s.eventPrice = Math.max(0, parseFloat(eventIn.value) || 0); }
     if (commIn) { const s = getService(commIn.dataset.svcComm); if (s) s.commission = Math.max(0, parseFloat(commIn.value) || 0); }
-    if (catIn) { const s = getService(catIn.dataset.svcCat); if (s) s.category = catIn.value; }
     if (groupIn) { const s = getService(groupIn.dataset.svcGroup); if (s) s.group = groupIn.value; }
     saveState();
+    // Category changes which columns apply, so redraw the rows
+    if (catIn) {
+      const s = getService(catIn.dataset.svcCat);
+      if (s) { s.category = catIn.value; saveState(); renderSettings(); }
+    }
   };
 
   svcEl.onclick = (e) => {
@@ -244,7 +253,7 @@ function renderGroups() {
   const sorted = [...state.serviceGroups].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
   for (const grp of sorted) {
-    const count = state.services.filter(s => s.group === grp.id).length;
+    const count = state.services.filter(s => s.group === grp.id && !isFlatPayout(s)).length;
     const div = document.createElement('div');
     div.className = 'role-row';
     div.innerHTML = `

@@ -225,6 +225,14 @@
 /* Service Buttons */
 .services-section { margin-bottom: 16px; }
 
+/* Flat Payouts */
+.payouts-section { margin-bottom: 16px; }
+
+.service-btn.payout-btn {
+  border-color: #f59e0b55;
+  background-color: #f59e0b12;
+}
+
 /* Customization Section */
 .customize-section { margin-bottom: 16px; }
 
@@ -370,6 +378,8 @@
   font-weight: 600;
   margin: 0 8px;
 }
+
+.log-entry .log-price.payout { color: #fbbf24; }
 
 .log-entry .log-time {
   font-size: 11px;

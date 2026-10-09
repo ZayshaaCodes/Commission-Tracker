@@ -1,6 +1,7 @@
 import { $, money, uid, esc, timeAgo, safeColor, safeAttr } from './utils.js';
 import { state, getRole, getService, getServiceGroup, getServicePrice, getEmployeeWork,
-         getEmployeeWorkView, calcEmployeeSales, calcEmployeeCommission, saveState, logActivity } from './state.js';
+         getEmployeeWorkView, calcEmployeeSales, calcEmployeeCommission, calcEmployeeFlatPayout,
+         isFlatPayout, getFlatPayout, saveState, logActivity } from './state.js';
 import { getAccessLevel } from './auth.js';
 import { flushSync } from './firebase.js';
 
@@ -309,6 +310,37 @@ export function renderCommissions() {
     svcBtnsEl.appendChild(row);
   }
 
+  // Flat payouts (material runs, gold, etc.) - hidden when none are configured
+  const flatSvcs = state.services.filter(isFlatPayout);
+  const payoutsSection = document.querySelector('.payouts-section');
+  const payoutBtnsEl = $('flatPayoutButtons');
+  payoutsSection.style.display = flatSvcs.length ? '' : 'none';
+  payoutBtnsEl.innerHTML = '';
+
+  for (const svc of flatSvcs) {
+    const payout = getFlatPayout(svc.id);
+    const btn = document.createElement('button');
+    btn.className = 'service-btn payout-btn';
+    btn.innerHTML = `<span class="svc-name">${esc(svc.name)}</span><span class="svc-price">${money(payout)}</span>`;
+    btn.onclick = () => {
+      const w = getEmployeeWork(state.selectedEmployeeId);
+      w.entries.push({ id: uid(), serviceId: svc.id, timestamp: Date.now() });
+      const emp = state.employees.find(em => em.id === state.selectedEmployeeId);
+      const role = emp ? getRole(emp.roleId) : null;
+      logActivity({
+        type: 'flat-payout',
+        empName: emp ? emp.name : 'Unknown',
+        color: safeColor(role ? role.color : '#666'),
+        serviceName: svc.name,
+        price: payout
+      });
+      renderCommissions();
+      saveState();
+      flushSync();
+    };
+    payoutBtnsEl.appendChild(btn);
+  }
+
   // Customization section visibility
   const customizeSection = document.querySelector('.customize-section');
   if (customizeSection) customizeSection.style.display = state.customizeEnabled ? '' : 'none';
@@ -341,6 +373,7 @@ export function renderCommissions() {
   const commAmt = calcEmployeeCommission(emp.id);
   const net = sales - commAmt;
   const commRate = role ? role.commission : 0;
+  const payoutAmt = calcEmployeeFlatPayout(emp.id);
 
   $('compactSummary').innerHTML = `
     <div class="compact-stat">
@@ -355,6 +388,11 @@ export function renderCommissions() {
       <span class="cs-label">Commission</span>
       <span class="cs-value text-amber">${money(commAmt)}</span>
     </div>
+    ${payoutAmt > 0 ? `
+    <div class="compact-stat">
+      <span class="cs-label">Payouts</span>
+      <span class="cs-value text-amber">${money(payoutAmt)}</span>
+    </div>` : ''}
     <div class="compact-stat">
       <span class="cs-label">Net</span>
       <span class="cs-value text-blue">${money(net)}</span>
@@ -394,10 +432,12 @@ export function renderCommissions() {
     } else {
       const svc = getService(entry.serviceId);
       if (svc) {
+        const flat = isFlatPayout(svc);
         logItems.push({
           type: 'entry',
           name: svc.name,
-          total: getServicePrice(entry.serviceId),
+          total: flat ? getFlatPayout(entry.serviceId) : getServicePrice(entry.serviceId),
+          payout: flat,
           entryId: entry.id,
           timestamp: entry.timestamp
         });
@@ -418,7 +458,7 @@ export function renderCommissions() {
         : `<button class="log-delete" data-log-id="${item.logId}" title="Remove">&times;</button>`;
       div.innerHTML = `
         <span class="log-name">${esc(item.name)}</span>
-        <span class="log-price">${money(item.total)}</span>
+        <span class="log-price${item.payout ? ' payout' : ''}">${money(item.total)}</span>
         <span class="log-time">${timeAgo(item.timestamp)}</span>
         ${deleteBtn}
       `;
@@ -451,7 +491,7 @@ export function renderCommissions() {
               empName: emp ? emp.name : 'Unknown',
               color: safeColor(role ? role.color : '#666'),
               serviceName: svc ? svc.name : 'Unknown',
-              price: getServicePrice(entry.serviceId)
+              price: isFlatPayout(svc) ? getFlatPayout(entry.serviceId) : getServicePrice(entry.serviceId)
             });
           }
         }

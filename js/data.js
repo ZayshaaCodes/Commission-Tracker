@@ -1,5 +1,5 @@
 import { state, getRole, calcEmployeeSales, calcEmployeeCommission,
-         calcEmployeeServiceCount, saveState } from './state.js';
+         calcEmployeeFlatPayout, calcEmployeeServiceCount, saveState } from './state.js';
 
 function downloadFile(content, filename, type) {
   const blob = new Blob([content], { type });
@@ -14,7 +14,7 @@ function downloadFile(content, filename, type) {
 }
 
 export function exportCsv() {
-  const rows = [['Employee', 'Role', 'State ID', 'Gross Sales', 'Commission %', 'Commission $', 'Net Sales', 'Services', 'Status']];
+  const rows = [['Employee', 'Role', 'State ID', 'Gross Sales', 'Commission %', 'Commission $', 'Flat Payouts $', 'Net Sales', 'Services', 'Status']];
 
   for (const emp of state.employees) {
     const role = getRole(emp.roleId);
@@ -27,6 +27,7 @@ export function exportCsv() {
       sales,
       role ? role.commission : 0,
       comm.toFixed(2),
+      calcEmployeeFlatPayout(emp.id).toFixed(2),
       (sales - comm).toFixed(2),
       calcEmployeeServiceCount(emp.id),
       emp.active ? 'Active' : 'Inactive'
@@ -93,7 +94,7 @@ export function importJson(file, onComplete) {
         id: s.id, name: s.name.slice(0, 64),
         price: Math.max(0, Number(s.price) || 0),
         eventPrice: Math.max(0, Number(s.eventPrice) || 0),
-        category: s.category === 'inventory' ? 'inventory' : 'service'
+        category: ['inventory', 'flat'].includes(s.category) ? s.category : 'service'
       }));
 
       Object.assign(state, data);

@@ -162,6 +162,23 @@ export function getServicePrice(serviceId) {
   return state.eventMode ? (svc.eventPrice ?? svc.price) : svc.price;
 }
 
+export function isFlatPayout(svc) {
+  return !!svc && svc.category === 'flat';
+}
+
+// Fixed payout for a flat-payout item (ignores event pricing and role rate)
+export function getFlatPayout(serviceId) {
+  const svc = getService(serviceId);
+  return isFlatPayout(svc) ? (svc.price || 0) : 0;
+}
+
+/** Sale value a single work entry contributes to gross (flat payouts are not sales) */
+export function getEntrySale(entry) {
+  if (entry.type === 'customize') return entry.amount || 0;
+  if (isFlatPayout(getService(entry.serviceId))) return 0;
+  return getServicePrice(entry.serviceId);
+}
+
 export function getEmployeeWork(empId) {
   if (!state.work[empId]) {
     state.work[empId] = { inventory: {}, entries: [] };
@@ -211,11 +228,7 @@ export function calcEmployeeSales(empId) {
     total += getServicePrice(svcId) * qty;
   }
   for (const entry of work.entries) {
-    if (entry.type === 'customize') {
-      total += entry.amount || 0;
-    } else {
-      total += getServicePrice(entry.serviceId);
-    }
+    total += getEntrySale(entry);
   }
   return total;
 }
@@ -241,6 +254,10 @@ export function calcEmployeeCommission(empId) {
       total += (entry.amount || 0) * rate;
     } else {
       const svc = state.services.find(s => s.id === entry.serviceId);
+      if (isFlatPayout(svc)) {
+        total += svc.price || 0;
+        continue;
+      }
       const flat = svc ? (svc.commission || 0) : 0;
       if (flat > 0) {
         total += flat * rate;
@@ -248,6 +265,16 @@ export function calcEmployeeCommission(empId) {
         total += getServicePrice(entry.serviceId) * rate;
       }
     }
+  }
+  return total;
+}
+
+/** Total flat payouts (already included in calcEmployeeCommission) */
+export function calcEmployeeFlatPayout(empId) {
+  const work = getEmployeeWorkView(empId);
+  let total = 0;
+  for (const entry of work.entries) {
+    if (entry.type !== 'customize') total += getFlatPayout(entry.serviceId);
   }
   return total;
 }
